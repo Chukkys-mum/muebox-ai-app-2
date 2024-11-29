@@ -1,3 +1,5 @@
+// /app/dashboard/ai-chat/page.tsx
+
 import Chat from '@/components/dashboard/ai-chat';
 import {
   getProducts,

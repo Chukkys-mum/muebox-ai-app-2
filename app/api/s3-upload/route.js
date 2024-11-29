@@ -1,3 +1,5 @@
+// /app/api/s3-upload/route.js
+
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';

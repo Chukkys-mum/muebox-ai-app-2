@@ -1,3 +1,5 @@
+// /app/dashboard/ai-generator/page.tsx
+
 import Generator from '@/components/dashboard/ai-generator';
 import {
   getProducts,

@@ -1,3 +1,5 @@
+// /components/audio/index.tsx
+
 import * as React from 'react';
 import { MdPause, MdPlayArrow, MdVolumeOff, MdVolumeUp } from 'react-icons/md';
 import { Button } from '../ui/button';

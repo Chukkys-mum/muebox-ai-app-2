@@ -1,3 +1,5 @@
+// /app/api/essayAPI/route.ts
+
 import { EssayBody } from '@/types/types';
 import { OpenAIStream } from '@/utils/streams/essayStream';
 

@@ -1,3 +1,5 @@
+// /components/MessageBoxChat.tsx
+
 import { Card } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 

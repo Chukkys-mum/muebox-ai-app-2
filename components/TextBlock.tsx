@@ -1,3 +1,5 @@
+// /components/TextBlock.tsx
+
 interface Props {
   text: string;
   editable?: boolean;

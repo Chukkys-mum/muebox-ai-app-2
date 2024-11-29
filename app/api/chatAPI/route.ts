@@ -1,3 +1,5 @@
+// /app/api/chatAPI/route.ts
+
 import { ChatBody } from '@/types/types';
 import { OpenAIStream } from '@/utils/streams/chatStream';
 

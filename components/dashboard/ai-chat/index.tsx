@@ -1,3 +1,5 @@
+// /components/dashboard/ai-chat/index.tsx
+
 'use client';
 
 /*eslint-disable*/

@@ -1,3 +1,5 @@
+// /components/dashboard/ai-assistant/index.tsx
+
 'use client';
 
 /*eslint-disable*/

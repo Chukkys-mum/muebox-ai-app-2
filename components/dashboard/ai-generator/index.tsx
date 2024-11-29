@@ -1,3 +1,5 @@
+// components/dashboard/ai-generator/index.tsx
+
 /*eslint-disable*/
 'use client';
 

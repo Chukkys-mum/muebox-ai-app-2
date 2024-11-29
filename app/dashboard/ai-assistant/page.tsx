@@ -1,3 +1,5 @@
+// /app/dashboard/ai-assistant/page.tsx
+
 import Assistant from '@/components/dashboard/ai-assistant';
 import {
   getProducts,
