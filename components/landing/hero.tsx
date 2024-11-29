@@ -24,7 +24,7 @@ export default function Hero() {
               variant="outline"
               className="mx-auto w-max px-4 py-2 text-foreground dark:border-none dark:bg-zinc-800 dark:text-white"
             >
-              Introducing: Horizon UI Boilerplate x shadcn/ui
+              Introducing: Ember Ai x Muebox
             </Badge>
             <h1 className="3xl:text-6xl z-[40] mx-auto mb-6 mt-4 max-w-[94%] text-3xl font-bold leading-[36px] text-foreground dark:text-white md:max-w-[70%] md:text-[50px] md:leading-[60px] lg:max-w-[76%] lg:text-[50px] lg:leading-[68px] xl:max-w-[60%] 2xl:max-w-[48%] 2xl:text-[50px] 2xl:leading-[68px]">
               Launch your startup project 10X faster in a few moments

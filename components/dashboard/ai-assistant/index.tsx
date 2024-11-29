@@ -16,6 +16,7 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useState } from 'react';
 import { HiMiniPencilSquare, HiSparkles, HiUser } from 'react-icons/hi2';
+import { SpeechControl } from '@/components/ui/SpeechControl';
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
@@ -325,15 +326,23 @@ export default function Assistant(props: Props) {
           </div>
           {/* Chat Input */}
           <div className="mt-5 flex justify-end">
-            <Input
-              className="mr-2.5 h-full min-h-[54px] w-full px-5 py-5 text-sm focus:outline-0 dark:placeholder:text-zinc-400"
-              placeholder="Type your message here..."
-              onChange={handleChange}
-            />
-            <Button
-              className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
-              onClick={handleSubmit}
-            >
+            <div className="relative flex w-full items-center">
+              <Input
+                className="mr-2.5 h-full min-h-[54px] w-full px-5 py-5 text-sm focus:outline-0 dark:placeholder:text-zinc-400"
+                placeholder="Type your message here..."
+                onChange={handleChange}
+                value={inputMessage}
+              />
+              <SpeechControl
+                onTextChange={(text) => setInputMessage(text)}
+                onStart={() => {/* Handle start */}}
+                onStop={() => {/* Handle stop */}}
+              />
+            </div>
+              <Button
+                className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
+                onClick={handleSubmit}
+              >
               {loading ? (
                 <svg
                   aria-hidden="true"
@@ -360,7 +369,7 @@ export default function Assistant(props: Props) {
 
           <div className="mt-5 flex flex-col items-center justify-center md:flex-row">
             <p className="text-center text-xs text-zinc-500 dark:text-white">
-              LLMs AKA Ai may produce inaccurate information
+              Ai may produce inaccurate information
               about people, places, or facts. Consider checking important
               information.
             </p>
