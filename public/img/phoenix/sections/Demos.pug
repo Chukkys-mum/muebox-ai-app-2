@@ -1,0 +1,86 @@
+append variables
+	-
+		var variantItems = [
+			{
+				sideThumb: 'vertical-sidenav',
+				mainThumb: 'demo-1',
+				variantName: 'Vertical Sidenav (Default)',
+				link: `${CWD}${paths['default-dashboard']}?theme-control=true&navigation-type=vertical`,
+				className:'justify-content-center justify-content-lg-end'
+			},
+			{
+				sideThumb: 'demo',
+				mainThumb: 'demo',
+				variantName: 'Dark Mode',
+				link: `${CWD}${paths['default-dashboard']}?theme-control=true&color-scheme=dark`,
+				className:'justify-content-center justify-content-lg-start'
+			},
+			//- {
+			//- 	sideThumb: 'sidenav-collapse',
+			//- 	mainThumb: 'demo-2',
+			//- 	variantName: 'Sidenav Collapse',
+			//- 	link: `${CWD}${paths['project-management-dashboard']}?theme-control=true&navbar-vertical-collapsed=true`,
+			//- 	className:'justify-content-center justify-content-lg-end'
+			//- },
+			{
+				sideThumb: 'sidenav-dark',
+				mainThumb: 'demo-5',
+				variantName: 'Darknav',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-darknav']}` : `${CWD}${paths['default-dashboard']}?theme-control=true&vertical-navbar-appearance=darker&horizontal-navbar-appearance=darker`}`,
+				className:'justify-content-center justify-content-lg-end'
+			},
+			{
+				sideThumb: 'topnav-slim-combo',
+				mainThumb: 'demo-6',
+				variantName: 'Topnav Slim',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-topnav-slim']}` : `${CWD}${paths['default-dashboard']}?theme-control=true&horizontal-navbar-shape=slim&horizontal-navbar-appearance=darker`}`,
+				className:'justify-content-center justify-content-lg-start'
+			},
+			{
+				sideThumb: 'topnav-only',
+				mainThumb: 'demo-4',
+				variantName: 'Topnav Only',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-navbar-top']}` : `${CWD}${paths['default-dashboard']}?theme-control=true&navigation-type=horizontal`}`,
+				className:'justify-content-center justify-content-lg-end'
+			},
+			{
+				sideThumb: 'horizontal-slim',
+				mainThumb: 'demo-7',
+				variantName: 'Horizontal Slim',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-horizontal-slim']}` : `${CWD}${paths['project-management-dashboard']}?theme-control=true&navigation-type=horizontal&horizontal-navbar-shape=slim&horizontal-navbar-appearance=darker`}`,
+				className:'justify-content-center justify-content-lg-start'
+			},
+			{
+				sideThumb: 'combo-nav',
+				mainThumb: 'demo-8',
+				variantName: 'Combo Nav',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-combo-nav']}` : `${CWD}${paths['default-dashboard']}?theme-control=true&navigation-type=combo`}`,
+				className:'justify-content-center justify-content-lg-end'
+			},
+			{
+				sideThumb: 'demo-9-thumb',
+				mainThumb: 'demo-9',
+				variantName: 'Dual Nav',
+				link: `${ ENV !== 'PROD' ? `${CWD}${paths['demo-dual-nav']}` : `${CWD}${paths['default-dashboard']}?theme-control=true&navigation-type=dual-nav`}`,
+				className:'justify-content-center justify-content-lg-start'
+			},
+		];
+
+mixin Demo(config)
+	.col-lg-6.position-relative.variant-container
+		.d-flex.px-4.pt-6(class=`${config.className}`)
+			.text-center
+				.img-container.w-100
+					img.side-panel-thumb.h-100.w-100.rounded(src=`${CWD}assets/img/sections/${config.sideThumb}.webp` alt="")
+					.layout-thumb
+						img.img-fluid.rounded(src=`${CWD}assets/img/sections/${config.mainThumb}.webp` alt="")
+				
+				h5.py-4.text-body-highlight=config.variantName
+		a(href=config.link data-showcase-demo=config.value target='_blank').stretched-link
+
+mixin Demos
+	+Section('container-fluid').pt-0
+		.row
+			each item in variantItems
+				+Demo(item)
+			

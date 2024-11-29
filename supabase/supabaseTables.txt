@@ -1,0 +1,1076 @@
+-- Chat Files table
+CREATE TABLE public.chat_files (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_id UUID REFERENCES public.chats(id),
+    file_type VARCHAR,
+    file_path TEXT,
+    uploaded_by_id UUID REFERENCES auth.users(id),
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Personality Profile Knowledge Base junction table
+CREATE TABLE public.personality_profile_knowledge_base (
+    profile_id UUID REFERENCES public.personality_profiles(id),
+    knowledge_base_id UUID REFERENCES public.knowledge_base(id),
+    PRIMARY KEY (profile_id, knowledge_base_id)
+);
+
+-- Notifications table
+CREATE TABLE public.notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    notification_type VARCHAR NOT NULL,
+    message TEXT,
+    status VARCHAR DEFAULT 'unread',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    read_at TIMESTAMPTZ
+);
+
+-- Add updated_at trigger for chat_files
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON public.chat_files
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- Enable RLS
+ALTER TABLE public.chat_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.personality_profile_knowledge_base ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Add indexes
+CREATE INDEX idx_chat_files_chat_id ON public.chat_files(chat_id);
+CREATE INDEX idx_chat_files_uploaded_by ON public.chat_files(uploaded_by_id);
+CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX idx_notifications_status ON public.notifications(status);
+
+-- Create ENUMs
+CREATE TYPE public.knowledge_base_type AS ENUM ('public', 'private', 'safeguard');
+CREATE TYPE public.chat_type AS ENUM ('direct', 'group', 'ai');
+CREATE TYPE public.email_status AS ENUM ('pending', 'analyzed', 'deleted');
+CREATE TYPE public.llm_status AS ENUM ('active', 'deprecated', 'testing');
+
+-- AI/Personality Related Tables
+CREATE TABLE public.tones (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    formality_level INTEGER,
+    emotion_level INTEGER,
+    style JSONB DEFAULT '{}'::jsonb,
+    tone_type VARCHAR,
+    attributes JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- File & Knowledge Base Tables
+CREATE TABLE public.knowledge_base (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    description TEXT,
+    type knowledge_base_type DEFAULT 'private',
+    file_path TEXT,
+    status VARCHAR DEFAULT 'active',
+    size NUMERIC,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.personality_profiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    profile_name VARCHAR NOT NULL,
+    default_tone_id UUID REFERENCES public.tones(id),
+    knowledge_base_id UUID,  -- Will be referenced after knowledge_base table creation
+    role_id UUID REFERENCES public.roles(id),
+    team_id UUID REFERENCES public.teams(id),
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Chat Related Tables
+CREATE TABLE public.chat_scopes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    initial_prompt TEXT,
+    context JSONB DEFAULT '{}'::jsonb,
+    personality_profile_id UUID REFERENCES public.personality_profiles(id),
+    custom_instructions TEXT,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.chats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_type chat_type NOT NULL,
+    created_by_user_id UUID REFERENCES auth.users(id),
+    chat_scope_id UUID REFERENCES public.chat_scopes(id),
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.chat_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_id UUID REFERENCES public.chats(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id),
+    role_in_chat VARCHAR,
+    status VARCHAR DEFAULT 'active',
+    joined_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.personalities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    profile_id UUID REFERENCES public.personality_profiles(id),
+    name VARCHAR NOT NULL,
+    default_tone_id UUID REFERENCES public.tones(id),
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.personality_tone (
+    personality_id UUID REFERENCES public.personalities(id),
+    tone_id UUID REFERENCES public.tones(id),
+    PRIMARY KEY (personality_id, tone_id)
+);
+
+
+-- Add foreign key constraint to personality_profiles after knowledge_base creation
+ALTER TABLE public.personality_profiles
+ADD CONSTRAINT fk_knowledge_base
+FOREIGN KEY (knowledge_base_id) REFERENCES public.knowledge_base(id);
+
+CREATE TABLE public.knowledge_base_files (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    knowledge_base_id UUID REFERENCES public.knowledge_base(id),
+    file_name VARCHAR NOT NULL,
+    file_type VARCHAR,
+    file_path VARCHAR,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.files (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    related_entity_type VARCHAR,
+    related_entity_id UUID,
+    file_name VARCHAR NOT NULL,
+    file_type VARCHAR,
+    file_path TEXT,
+    uploaded_by UUID REFERENCES auth.users(id),
+    category VARCHAR,
+    extension VARCHAR,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.file_settings (
+    id SERIAL PRIMARY KEY,
+    max_file_size INTEGER,
+    allowed_file_types TEXT[],
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.file_versions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    file_id UUID REFERENCES public.files(id),
+    version_number INTEGER,
+    file_path TEXT,
+    uploaded_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Email Related Tables
+CREATE TABLE public.email_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    provider VARCHAR NOT NULL,
+    email_address VARCHAR NOT NULL,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (user_id, email_address)
+);
+
+CREATE TABLE public.emails (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    email_account_id UUID REFERENCES public.email_accounts(id),
+    subject VARCHAR,
+    sender VARCHAR,
+    recipient JSONB,
+    email_body TEXT,
+    status email_status DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.tone_analysis (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email_id UUID REFERENCES public.emails(id),
+    personality_id UUID REFERENCES public.personalities(id),
+    tone_id UUID REFERENCES public.tones(id),
+    sentiment VARCHAR,
+    context VARCHAR,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tracking & Logging Tables
+CREATE TABLE public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    action VARCHAR NOT NULL,
+    entity_type VARCHAR,
+    entity_id UUID,
+    details JSONB DEFAULT '{}'::jsonb,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.activity_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    action TEXT NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.login_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    ip_address TEXT,
+    device TEXT,
+    status VARCHAR DEFAULT 'active',
+    logged_in_at TIMESTAMPTZ DEFAULT now(),
+    logged_out_at TIMESTAMPTZ
+);
+
+CREATE TABLE public.recent_devices (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    device TEXT,
+    ip_address TEXT,
+    last_used_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.trash (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT,
+    size DOUBLE PRECISION,
+    user_id UUID REFERENCES auth.users(id),
+    deleted_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- AI/LLM Related Tables
+CREATE TABLE public.llm_providers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    contact_info TEXT,
+    website TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.llms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    theme TEXT,
+    description TEXT,
+    api_endpoint TEXT,
+    provider_id UUID REFERENCES public.llm_providers(id),
+    status llm_status DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.llm_features (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    llm_id UUID REFERENCES public.llms(id),
+    feature TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.llm_usage_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    llm_id UUID REFERENCES public.llms(id),
+    user_id UUID REFERENCES auth.users(id),
+    request_payload JSONB,
+    response_payload JSONB,
+    status VARCHAR,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add updated_at triggers for all tables
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers for all tables with updated_at column
+DO $$ 
+DECLARE
+    t text;
+BEGIN
+    FOR t IN 
+        SELECT table_name 
+        FROM information_schema.columns 
+        WHERE column_name = 'updated_at' 
+        AND table_schema = 'public'
+    LOOP
+        EXECUTE format('
+            CREATE TRIGGER handle_updated_at
+            BEFORE UPDATE ON public.%I
+            FOR EACH ROW
+            EXECUTE FUNCTION public.handle_updated_at();
+        ', t);
+    END LOOP;
+END $$;
+
+-- Enable Row Level Security for all tables
+DO $$ 
+DECLARE
+    t text;
+BEGIN
+    FOR t IN 
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_type = 'BASE TABLE'
+    LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', t);
+    END LOOP;
+END $$;
+
+-- Create indexes for better performance
+CREATE INDEX idx_chat_scopes_personality_profile ON public.chat_scopes(personality_profile_id);
+CREATE INDEX idx_chats_created_by_user ON public.chats(created_by_user_id);
+CREATE INDEX idx_chat_participants_chat ON public.chat_participants(chat_id);
+CREATE INDEX idx_chat_participants_user ON public.chat_participants(user_id);
+CREATE INDEX idx_personality_profiles_user ON public.personality_profiles(user_id);
+CREATE INDEX idx_emails_user ON public.emails(user_id);
+CREATE INDEX idx_emails_account ON public.emails(email_account_id);
+CREATE INDEX idx_audit_logs_user ON public.audit_logs(user_id);
+CREATE INDEX idx_activity_log_user ON public.activity_log(user_id);
+CREATE INDEX idx_login_sessions_user ON public.login_sessions(user_id);
+CREATE INDEX idx_recent_devices_user ON public.recent_devices(user_id);
+CREATE INDEX idx_llm_usage_logs_user ON public.llm_usage_logs(user_id);
+CREATE INDEX idx_llm_usage_logs_llm ON public.llm_usage_logs(llm_id);
+
+-- Enable necessary extensions if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create account type enum
+CREATE TYPE public.account_type AS ENUM ('personal', 'company');
+
+-- Create updated_at trigger function if not exists
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create permission schemes table
+CREATE TABLE public.permission_schemes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL UNIQUE,
+    description TEXT,
+    permissions JSONB DEFAULT '{}'::jsonb,
+    is_super_admin BOOLEAN DEFAULT false,
+    is_account_admin BOOLEAN DEFAULT false,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create roles table
+CREATE TABLE public.roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL UNIQUE,
+    status VARCHAR DEFAULT 'active',
+    permission_scheme_id UUID REFERENCES public.permission_schemes(id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create accounts table
+CREATE TABLE public.accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    type account_type NOT NULL,
+    name VARCHAR NOT NULL,
+    -- Company specific fields (nullable for personal accounts)
+    domain VARCHAR,
+    organization_number VARCHAR,
+    tax_id VARCHAR,
+    -- Contact Information
+    contact_emails VARCHAR[] DEFAULT ARRAY[]::VARCHAR[],
+    contact_phone VARCHAR,
+    website VARCHAR,
+    -- Billing related
+    billing_address JSONB,
+    payment_method JSONB,
+    currency VARCHAR DEFAULT 'USD',
+    -- Display related
+    display_picture VARCHAR,
+    banner_image VARCHAR,
+    -- Location
+    timezone VARCHAR,
+    address_line1 VARCHAR,
+    address_line2 VARCHAR,
+    city VARCHAR,
+    state VARCHAR,
+    zip_code VARCHAR,
+    -- Metadata
+    metadata JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create teams table
+CREATE TABLE public.teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    description TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create account_users junction table
+-- First modify existing users table
+ALTER TABLE public.users
+DROP COLUMN billing_address,
+DROP COLUMN payment_method;
+
+-- Then create account_users table
+CREATE TABLE public.account_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES public.roles(id),
+    is_primary BOOLEAN DEFAULT false,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (account_id, user_id)
+);
+
+-- Create the primary account constraint
+CREATE UNIQUE INDEX unique_primary_account 
+ON public.account_users (user_id)
+WHERE is_primary = true;
+
+-- Create account_teams junction table
+CREATE TABLE public.account_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (account_id, team_id)
+);
+
+-- Add updated_at triggers
+CREATE TRIGGER handle_updated_at_accounts
+    BEFORE UPDATE ON public.accounts
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_account_users
+    BEFORE UPDATE ON public.account_users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_account_teams
+    BEFORE UPDATE ON public.account_teams
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_permission_schemes
+    BEFORE UPDATE ON public.permission_schemes
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_roles
+    BEFORE UPDATE ON public.roles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_teams
+    BEFORE UPDATE ON public.teams
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- Insert default permission schemes
+INSERT INTO public.permission_schemes (name, description, is_super_admin, is_account_admin)
+VALUES 
+    ('super_admin_scheme', 'Full system access including account deactivation', true, false),
+    ('admin_scheme', 'Full system access except account deactivation', false, true),
+    ('team_admin_scheme', 'Can manage teams and team members', false, false),
+    ('member_scheme', 'Basic member access', false, false);
+
+-- Insert standard roles
+INSERT INTO public.roles (name, permission_scheme_id)
+VALUES 
+    ('super_admin', (SELECT id FROM permission_schemes WHERE is_super_admin = true)),
+    ('admin', (SELECT id FROM permission_schemes WHERE is_account_admin = true)),
+    ('team_admin', (SELECT id FROM permission_schemes WHERE name = 'team_admin_scheme')),
+    ('member', (SELECT id FROM permission_schemes WHERE name = 'member_scheme'));
+
+-- Enable Row Level Security
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.account_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.account_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.permission_schemes ENABLE ROW LEVEL SECURITY;
+
+-- Basic RLS policies
+CREATE POLICY "Users can view accounts they belong to" ON public.accounts
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.account_users
+            WHERE account_users.account_id = accounts.id
+            AND account_users.user_id = auth.uid()
+        )
+    );
+
+-- Account users policies
+CREATE POLICY "Users can view account members" ON public.account_users
+    FOR SELECT USING (
+        account_id IN (
+            SELECT account_id FROM public.account_users
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Account teams policies
+CREATE POLICY "Users can view account teams" ON public.account_teams
+    FOR SELECT USING (
+        account_id IN (
+            SELECT account_id FROM public.account_users
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Team management policies
+CREATE POLICY "Team admins can create teams" ON public.teams
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name IN ('team_admin', 'admin', 'super_admin')
+        )
+    );
+
+CREATE POLICY "Team admins can update their teams" ON public.teams
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name IN ('team_admin', 'admin', 'super_admin')
+        )
+    );
+
+CREATE POLICY "Team admins can delete their teams" ON public.teams
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name IN ('team_admin', 'admin', 'super_admin')
+        )
+    );
+
+-- Account management policies
+CREATE POLICY "Only super_admin can deactivate accounts" ON public.accounts
+    FOR UPDATE 
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name = 'super_admin'
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name = 'super_admin'
+        )
+    );
+
+CREATE POLICY "Admins can manage everything except account deactivation" ON public.accounts
+    FOR UPDATE 
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.account_users au
+            JOIN public.roles r ON au.role_id = r.id
+            WHERE au.user_id = auth.uid()
+            AND r.name IN ('admin', 'super_admin')
+        )
+    )
+    WITH CHECK (
+        status != 'inactive'
+    );
+
+-- Indexes for performance
+CREATE INDEX idx_account_users_user_id ON public.account_users(user_id);
+CREATE INDEX idx_account_users_account_id ON public.account_users(account_id);
+CREATE INDEX idx_account_users_role_id ON public.account_users(role_id);
+CREATE INDEX idx_account_teams_account_id ON public.account_teams(account_id);
+CREATE INDEX idx_account_teams_team_id ON public.account_teams(team_id);
+CREATE INDEX idx_roles_permission_scheme_id ON public.roles(permission_scheme_id);
+
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+CREATE EXTENSION IF NOT EXISTS "pgsodium" WITH SCHEMA "pgsodium";
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+
+CREATE EXTENSION IF NOT EXISTS "pgjwt" WITH SCHEMA "extensions";
+
+CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+CREATE TYPE "public"."pricing_plan_interval" AS ENUM (
+    'day',
+    'week',
+    'month',
+    'year'
+);
+
+ALTER TYPE "public"."pricing_plan_interval" OWNER TO "postgres";
+
+CREATE TYPE "public"."pricing_type" AS ENUM (
+    'one_time',
+    'recurring'
+);
+
+ALTER TYPE "public"."pricing_type" OWNER TO "postgres";
+
+CREATE TYPE "public"."subscription_status" AS ENUM (
+    'trialing',
+    'active',
+    'canceled',
+    'incomplete',
+    'incomplete_expired',
+    'past_due',
+    'unpaid',
+    'paused'
+);
+
+ALTER TYPE "public"."subscription_status" OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+begin
+  insert into public.users (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$;
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+CREATE TABLE IF NOT EXISTS "public"."customers" (
+    "id" "uuid" NOT NULL,
+    "stripe_customer_id" "text"
+);
+
+ALTER TABLE "public"."customers" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."prices" (
+    "id" "text" NOT NULL,
+    "product_id" "text",
+    "active" boolean,
+    "description" "text",
+    "unit_amount" bigint,
+    "currency" "text",
+    "type" "public"."pricing_type",
+    "interval" "public"."pricing_plan_interval",
+    "interval_count" integer,
+    "trial_period_days" integer,
+    "metadata" "jsonb",
+    CONSTRAINT "prices_currency_check" CHECK (("char_length"("currency") = 3))
+);
+
+ALTER TABLE "public"."prices" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."products" (
+    "id" "text" NOT NULL,
+    "active" boolean,
+    "name" "text",
+    "description" "text",
+    "image" "text",
+    "metadata" "jsonb"
+);
+
+ALTER TABLE "public"."products" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
+    "id" "text" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "status" "public"."subscription_status",
+    "metadata" "jsonb",
+    "price_id" "text",
+    "quantity" integer,
+    "cancel_at_period_end" boolean,
+    "created" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "current_period_start" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "current_period_end" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "ended_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "cancel_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "canceled_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "trial_start" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "trial_end" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"())
+);
+
+ALTER TABLE "public"."subscriptions" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."users" (
+    "id" "uuid" NOT NULL,
+    "full_name" "text",
+    "avatar_url" "text",
+    "credits" bigint DEFAULT '3'::bigint,
+    "billing_address" "jsonb",
+    "payment_method" "jsonb"
+);
+
+ALTER TABLE "public"."users" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."customers"
+    ADD CONSTRAINT "customers_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."prices"
+    ADD CONSTRAINT "prices_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."customers"
+    ADD CONSTRAINT "customers_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id");
+
+ALTER TABLE ONLY "public"."prices"
+    ADD CONSTRAINT "prices_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id");
+
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_price_id_fkey" FOREIGN KEY ("price_id") REFERENCES "public"."prices"("id");
+
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id");
+
+CREATE POLICY "Allow public read-only access." ON "public"."prices" FOR SELECT USING (true);
+
+CREATE POLICY "Allow public read-only access." ON "public"."products" FOR SELECT USING (true);
+
+CREATE POLICY "Can only view own subs data." ON "public"."subscriptions" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Can update own user data." ON "public"."users" FOR UPDATE USING (("auth"."uid"() = "id"));
+
+CREATE POLICY "Can view own user data." ON "public"."users" FOR SELECT USING (("auth"."uid"() = "id"));
+
+ALTER TABLE "public"."customers" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."prices" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."subscriptions" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."prices";
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."products";
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+
+GRANT ALL ON TABLE "public"."customers" TO "anon";
+GRANT ALL ON TABLE "public"."customers" TO "authenticated";
+GRANT ALL ON TABLE "public"."customers" TO "service_role";
+
+GRANT ALL ON TABLE "public"."prices" TO "anon";
+GRANT ALL ON TABLE "public"."prices" TO "authenticated";
+GRANT ALL ON TABLE "public"."prices" TO "service_role";
+
+GRANT ALL ON TABLE "public"."products" TO "anon";
+GRANT ALL ON TABLE "public"."products" TO "authenticated";
+GRANT ALL ON TABLE "public"."products" TO "service_role";
+
+GRANT ALL ON TABLE "public"."subscriptions" TO "anon";
+GRANT ALL ON TABLE "public"."subscriptions" TO "authenticated";
+GRANT ALL ON TABLE "public"."subscriptions" TO "service_role";
+
+GRANT ALL ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT ALL ON TABLE "public"."users" TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "service_role";
+
+RESET ALL;
+
+-- Create audio status enum
+CREATE TYPE public.audio_status AS ENUM ('pending', 'processing', 'completed', 'failed');
+
+-- Create audio transcriptions table
+CREATE TABLE public.audio_transcriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_id UUID REFERENCES public.chats(id),
+    user_id UUID REFERENCES auth.users(id),
+    audio_file_path TEXT,
+    transcription_text TEXT,
+    language VARCHAR,
+    duration INTEGER,  -- in seconds
+    status audio_status DEFAULT 'pending',
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create voice messages table
+CREATE TABLE public.voice_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_id UUID REFERENCES public.chats(id),
+    sender_id UUID REFERENCES auth.users(id),
+    audio_file_path TEXT,
+    duration INTEGER,
+    transcription_id UUID REFERENCES public.audio_transcriptions(id),
+    status audio_status DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add updated_at triggers
+CREATE TRIGGER handle_updated_at_audio_transcriptions
+    BEFORE UPDATE ON public.audio_transcriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_voice_messages
+    BEFORE UPDATE ON public.voice_messages
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- Enable RLS
+ALTER TABLE public.audio_transcriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voice_messages ENABLE ROW LEVEL SECURITY;
+
+-- Add indexes for performance
+CREATE INDEX idx_audio_transcriptions_chat ON public.audio_transcriptions(chat_id);
+CREATE INDEX idx_audio_transcriptions_user ON public.audio_transcriptions(user_id);
+CREATE INDEX idx_voice_messages_chat ON public.voice_messages(chat_id);
+CREATE INDEX idx_voice_messages_sender ON public.voice_messages(sender_id);
+CREATE INDEX idx_voice_messages_transcription ON public.voice_messages(transcription_id);
+
+-- Add unique constraints and indices for junction tables
+ALTER TABLE public.personality_profile_knowledge_base 
+  ADD CONSTRAINT unique_profile_knowledge 
+  UNIQUE (profile_id, knowledge_base_id);
+
+CREATE INDEX idx_profile_knowledge_profile 
+  ON public.personality_profile_knowledge_base(profile_id);
+
+CREATE INDEX idx_profile_knowledge_kb 
+  ON public.personality_profile_knowledge_base(knowledge_base_id);
+
+-- Personality tone constraints and indices
+ALTER TABLE public.personality_tone 
+  ADD CONSTRAINT unique_personality_tone 
+  UNIQUE (personality_id, tone_id);
+
+CREATE INDEX idx_personality_tone_personality 
+  ON public.personality_tone(personality_id);
+
+CREATE INDEX idx_personality_tone_tone 
+  ON public.personality_tone(tone_id);
+
+-- Account users constraints and indices
+ALTER TABLE public.account_users 
+  ADD CONSTRAINT unique_account_user 
+  UNIQUE (account_id, user_id);
+
+CREATE INDEX idx_account_users_account 
+  ON public.account_users(account_id);
+
+CREATE INDEX idx_account_users_user 
+  ON public.account_users(user_id);
+
+CREATE INDEX idx_account_users_role 
+  ON public.account_users(role_id);
+
+-- Account teams constraints and indices
+ALTER TABLE public.account_teams 
+  ADD CONSTRAINT unique_account_team 
+  UNIQUE (account_id, team_id);
+
+CREATE INDEX idx_account_teams_account 
+  ON public.account_teams(account_id);
+
+CREATE INDEX idx_account_teams_team 
+  ON public.account_teams(team_id);
+
+-- Personality profiles teams constraints and indices
+ALTER TABLE public.personality_profiles_teams 
+  ADD CONSTRAINT unique_profile_team 
+  UNIQUE (profile_id, team_id);
+
+CREATE INDEX idx_profile_teams_profile 
+  ON public.personality_profiles_teams(profile_id);
+
+CREATE INDEX idx_profile_teams_team 
+  ON public.personality_profiles_teams(team_id);
+
+  -- Create personality_profiles_teams junction table
+CREATE TABLE public.personality_profiles_teams (
+    profile_id UUID NOT NULL REFERENCES public.personality_profiles(id),
+    team_id UUID NOT NULL REFERENCES public.teams(id),
+    status VARCHAR DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (profile_id, team_id)
+);
+
+-- Create chat_notifications table
+CREATE TABLE public.chat_notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chat_id UUID NOT NULL REFERENCES public.chats(id),
+    user_id UUID NOT NULL REFERENCES auth.users(id),
+    message TEXT NOT NULL,
+    type VARCHAR NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    read_at TIMESTAMPTZ
+);
+
+-- Create system_settings table
+CREATE TABLE public.system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key VARCHAR NOT NULL UNIQUE,
+    value JSONB NOT NULL,
+    description TEXT,
+    is_encrypted BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add updated_at triggers
+CREATE TRIGGER handle_updated_at_personality_profiles_teams
+    BEFORE UPDATE ON public.personality_profiles_teams
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_system_settings
+    BEFORE UPDATE ON public.system_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- Add RLS policies
+ALTER TABLE public.personality_profiles_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+
+-- Add indices for better performance
+CREATE INDEX idx_personality_profiles_teams_profile_id ON public.personality_profiles_teams(profile_id);
+CREATE INDEX idx_personality_profiles_teams_team_id ON public.personality_profiles_teams(team_id);
+CREATE INDEX idx_personality_profiles_teams_status ON public.personality_profiles_teams(status);
+
+CREATE INDEX idx_chat_notifications_chat_id ON public.chat_notifications(chat_id);
+CREATE INDEX idx_chat_notifications_user_id ON public.chat_notifications(user_id);
+CREATE INDEX idx_chat_notifications_is_read ON public.chat_notifications(is_read);
+CREATE INDEX idx_chat_notifications_created_at ON public.chat_notifications(created_at);
+
+CREATE INDEX idx_system_settings_key ON public.system_settings(key);
+
+-- Basic RLS policies (you may want to customize these based on your needs)
+CREATE POLICY "Users can view their own notifications"
+    ON public.chat_notifications FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Team members can view profile teams"
+    ON public.personality_profiles_teams FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM public.account_teams at
+        JOIN public.account_users au ON at.account_id = au.account_id
+        WHERE au.user_id = auth.uid()
+    ));
+
+CREATE POLICY "Only super admins can modify system settings"
+    ON public.system_settings
+    USING (EXISTS (
+        SELECT 1 FROM public.account_users au
+        JOIN public.roles r ON au.role_id = r.id
+        WHERE au.user_id = auth.uid()
+        AND r.name = 'super_admin'
+    ));
