@@ -1,8 +1,18 @@
 // services/files/FileService.ts
 // Handles Supabase interactions for file upload, deletion, metadata fetching, and updates.
 
-import { supabase } from "@/supabase/supabaseClient";
+import { createClient } from '@/utils/supabase/client';
 import { FileRow } from "@/types/FileTypes";
+
+
+const supabase = createClient();
+
+interface FileStorageUsage {
+  used: number;
+  total: number;
+  breakdown: Record<string, number>;
+}
+
 
 export const FileService = {
   /**
@@ -28,7 +38,7 @@ export const FileService = {
       console.error('fetchFiles:', error);
       return [];
     }
-  }
+  },
 
   /**
    * Fetch file settings.
@@ -37,11 +47,11 @@ export const FileService = {
   async getFileSettings(): Promise<{ maxFileSize: number; allowedFileTypes: string[] } | null> {
     try {
       const { data, error } = await supabase.from("file_settings").select("*").single();
-
+  
       if (error) {
         throw new Error(`Error fetching file settings: ${error.message}`);
       }
-
+  
       return {
         ...data,
         allowedFileTypes: (data?.allowedFileTypes || "")
@@ -223,6 +233,113 @@ export const FileService = {
       return false;
     }
   },
-};
+
+  // services/files/FileService.ts
+// Add these methods to your existing FileService
+  
+    /**
+     * Archive a file
+     */
+    async archiveFile(fileId: string): Promise<boolean> {
+      try {
+        const { error } = await supabase
+          .from("files")
+          .update({ 
+            status: 'archived',
+            archived_at: new Date().toISOString()
+          })
+          .eq("id", fileId);
+  
+        if (error) throw error;
+        return true;
+      } catch (error) {
+        console.error("archiveFile:", error);
+        return false;
+      }
+    },
+  
+    /**
+     * Get archived files with pagination
+     */
+    async getArchivedFiles(
+      page: number = 1,
+      limit: number = 10
+    ): Promise<{ files: FileRow[]; total: number }> {
+      try {
+        const start = (page - 1) * limit;
+        const end = start + limit - 1;
+  
+        const { data, error, count } = await supabase
+          .from("files")
+          .select("*", { count: "exact" })
+          .eq("status", "archived")
+          .order("archived_at", { ascending: false })
+          .range(start, end);
+  
+        if (error) throw error;
+  
+        return {
+          files: data || [],
+          total: count || 0
+        };
+      } catch (error) {
+        console.error("getArchivedFiles:", error);
+        return { files: [], total: 0 };
+      }
+    },
+  
+    /**
+     * Restore file from archive
+     */
+    async restoreFromArchive(fileId: string): Promise<boolean> {
+      try {
+        const { error } = await supabase
+          .from("files")
+          .update({ 
+            status: 'active',
+            archived_at: null 
+          })
+          .eq("id", fileId);
+  
+        if (error) throw error;
+        return true;
+      } catch (error) {
+        console.error("restoreFromArchive:", error);
+        return false;
+      }
+    },
+  
+    /**
+     * Get storage usage for archived files
+     */
+    async getArchivedStorageUsage(): Promise<FileStorageUsage> {
+        try {
+          const { data: files, error } = await supabase
+            .from("files")
+            .select("size, category")
+            .eq("status", "archived");
+    
+          if (error) throw error;
+    
+          const breakdown = (files || []).reduce<Record<string, number>>((acc, file) => {
+            const category = file.category || 'other';
+            acc[category] = (acc[category] || 0) + Number(file.size);
+            return acc;
+          }, {});
+    
+          const used = Object.values(breakdown).reduce((a: number, b: number) => a + b, 0);
+    
+          return {
+            used,
+            total: used * 2,
+            breakdown
+          };
+        } catch (error) {
+          console.error("getArchivedStorageUsage:", error);
+          return { used: 0, total: 0, breakdown: {} };
+        }
+      }
+    };
+
 
   

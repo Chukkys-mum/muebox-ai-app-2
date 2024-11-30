@@ -1805,6 +1805,136 @@ export interface Database {
         Relationships: [];
       };
       
+      templates: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          category: string;
+          metadata: Json;
+          configuration: Json;
+          prompts: Json;
+          validation: Json;
+          version: string;
+          created_at: string;
+          updated_at: string;
+          user_id: string;
+          archived: boolean;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string;
+          category: string;
+          metadata: Json;
+          configuration: Json;
+          prompts: Json;
+          validation: Json;
+          version?: string;
+          created_at?: string;
+          updated_at?: string;
+          user_id: string;
+          archived?: boolean;
+        };
+        Update: {
+          name?: string;
+          description?: string;
+          category?: string;
+          metadata?: Json;
+          configuration?: Json;
+          prompts?: Json;
+          validation?: Json;
+          version?: string;
+          updated_at?: string;
+          archived?: boolean;
+        };
+      };
+      template_versions: {
+        Row: {
+          id: string;
+          template_id: string;
+          version: string;
+          changes: Json;
+          template_data: Json;
+          created_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          version: string;
+          changes: Json;
+          template_data: Json;
+          created_at?: string;
+          created_by: string;
+        };
+        Update: {
+          changes?: Json;
+          template_data?: Json;
+        };
+      };
+      template_usage: {
+        Row: {
+          id: string;
+          template_id: string;
+          user_id: string;
+          timestamp: string;
+          inputs: Json;
+          result: Json;
+          metrics: Json;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          user_id: string;
+          timestamp?: string;
+          inputs: Json;
+          result: Json;
+          metrics: Json;
+        };
+        Update: {
+          inputs?: Json;
+          result?: Json;
+          metrics?: Json;
+        };
+      };
+
+      scopes: {
+        Row: {
+          id: string;
+          type: string; // USER-DEFINED enum (scope_type)
+          name: string;
+          description: string | null;
+          context: Json;
+          llm_preferences: Json | null;
+          template_id: string | null;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          name: string;
+          description?: string | null;
+          context: Json;
+          llm_preferences?: Json | null;
+          template_id?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          type?: string;
+          name?: string;
+          description?: string | null;
+          context?: Json;
+          llm_preferences?: Json | null;
+          template_id?: string | null;
+          metadata?: Json | null;
+          updated_at?: string;
+        };
+      };
 
     };
     Views: {

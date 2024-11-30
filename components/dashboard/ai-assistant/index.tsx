@@ -339,10 +339,10 @@ export default function Assistant(props: Props) {
                 onStop={() => {/* Handle stop */}}
               />
             </div>
-              <Button
-                className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
-                onClick={handleSubmit}
-              >
+            <Button 
+              className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
+              onClick={handleSubmit}
+            >
               {loading ? (
                 <svg
                   aria-hidden="true"

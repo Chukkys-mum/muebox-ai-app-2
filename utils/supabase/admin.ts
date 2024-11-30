@@ -1,3 +1,5 @@
+// utils/supabase/admin.ts
+
 import type { Database, Tables, TablesInsert } from '@/types/types_db';
 import { toDateTime } from '@/utils/helpers';
 import { stripe } from '@/utils/stripe/config';

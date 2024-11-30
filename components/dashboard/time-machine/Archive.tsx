@@ -1,4 +1,4 @@
-// components/time-machine/Archive.tsx
+// components/dashboard/time-machine/Archive.tsx
 
 import React, { useState, useEffect } from "react";
 import { FileRow } from "@/types/FileTypes";
@@ -10,33 +10,49 @@ import { useRouter } from "next/navigation";
 
 const Archive: React.FC = () => {
   const [archivedFiles, setArchivedFiles] = useState<FileRow[]>([]);
+  const [storageUsage, setStorageUsage] = useState<{
+    used: number;
+    total: number;
+    breakdown: Record<string, number>;
+  }>({ used: 0, total: 0, breakdown: {} });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchArchivedFiles = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const files = await FileService.getArchivedFiles(); // Fetch archived files from the database
-        setArchivedFiles(files);
-      } catch (err) {
-        console.error("Error fetching archived files:", err);
-        setError("Failed to load archived files.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchArchiveData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    fetchArchivedFiles();
-  }, []);
+      // Fetch both archived files and storage usage in parallel
+      const [filesData, usage] = await Promise.all([
+        FileService.getArchivedFiles(currentPage, 10),
+        FileService.getArchivedStorageUsage()
+      ]);
+
+      setArchivedFiles(filesData.files);
+      setStorageUsage(usage);
+    } catch (err) {
+      console.error("Error fetching archive data:", err);
+      setError("Failed to load archived files.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchArchiveData();
+  }, [currentPage]);
 
   const handleRestore = async (fileId: string) => {
     try {
-      const success = await FileService.restoreFile(fileId);
+      const success = await FileService.restoreFromArchive(fileId);
       if (success) {
         setArchivedFiles((prev) => prev.filter((file) => file.id !== fileId));
+        // Refresh storage usage after restoration
+        const usage = await FileService.getArchivedStorageUsage();
+        setStorageUsage(usage);
       } else {
         setError("Failed to restore file.");
       }
@@ -51,6 +67,9 @@ const Archive: React.FC = () => {
       const success = await FileService.deleteFile(fileId);
       if (success) {
         setArchivedFiles((prev) => prev.filter((file) => file.id !== fileId));
+        // Refresh storage usage after deletion
+        const usage = await FileService.getArchivedStorageUsage();
+        setStorageUsage(usage);
       } else {
         setError("Failed to delete file permanently.");
       }
@@ -58,6 +77,11 @@ const Archive: React.FC = () => {
       console.error("Error deleting file:", err);
       setError("An error occurred while deleting the file.");
     }
+  };
+
+  const formatStorageSize = (bytes: number): string => {
+    const gb = bytes / (1024 * 1024 * 1024);
+    return `${gb.toFixed(2)} GB`;
   };
 
   return (
@@ -75,8 +99,24 @@ const Archive: React.FC = () => {
           </Button>
         </div>
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {/* Storage Usage Display */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">Storage Usage</h2>
+          <div className="bg-gray-200 dark:bg-gray-700 h-4 rounded-full overflow-hidden">
+            <div
+              className="bg-blue-500 h-full transition-all duration-300"
+              style={{
+                width: `${(storageUsage.used / storageUsage.total) * 100}%`,
+              }}
+            />
+          </div>
+          <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {formatStorageSize(storageUsage.used)} of {formatStorageSize(storageUsage.total)} used
+          </div>
+        </div>
 
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        
         <ArchiveTable
           data={archivedFiles}
           onRestore={handleRestore}

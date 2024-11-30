@@ -1,3 +1,5 @@
+// /utils/stripe/client.ts
+
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 
 let stripePromise: Promise<Stripe | null>;

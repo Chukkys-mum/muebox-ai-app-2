@@ -1,6 +1,8 @@
 // /types/llm/classifier.ts
 // Prompt Classification interfaces
 
+import { Scope } from './scope';
+
 export type PromptCategory = 
   | 'conversation'
   | 'code'
