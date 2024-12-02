@@ -3,13 +3,16 @@
 import { FileService } from '../files/FileService';
 import { 
   FileOperationResult, 
-  FileWithCategory, 
-  ArchiveStorageUsage, 
   FileStatus, 
   FileCategory,
   FileRow,
   FileStorageUsage
 } from "@/types/FileTypes";
+import { PostgrestSingleResponse } from '@supabase/supabase-js';
+
+// Define missing types
+type FileWithCategory = FileRow & { category: FileCategory };
+type ArchiveStorageUsage = FileStorageUsage;
 
 type StorageUsageResponse = {
   used_space: number;
@@ -41,7 +44,7 @@ export class ArchiveService extends FileService {
       if (error) throw error;
 
       return {
-        files: data ? data.map(this.transformDatabaseFile) : [],
+        files: data ? data.map(file => this.transformDatabaseFile(file) as FileWithCategory) : [],
         total: count || 0
       };
     } catch (err) {
@@ -52,89 +55,107 @@ export class ArchiveService extends FileService {
 
   async archiveFile(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase
-        .from("files")
-        .update({
-          status: 'archived',
-          archived_at: new Date().toISOString()
-        })
-        .eq("id", fileId)
-        .select()
-        .single(),
+      async () => {
+        const result = await this.supabase
+          .from("files")
+          .update({
+            status: 'archived',
+            archived_at: new Date().toISOString()
+          })
+          .eq("id", fileId)
+          .select()
+          .single();
+        return result;
+      },
       'File archived successfully'
     );
   }
 
   async bulkArchiveFiles(fileIds: string[]): Promise<FileOperationResult> {
     return this.genericBulkFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          status: 'archived',
-          archived_at: new Date().toISOString()
-        })
-        .in('id', fileIds)
-        .select(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            status: 'archived',
+            archived_at: new Date().toISOString()
+          })
+          .in('id', fileIds)
+          .select();
+        return result;
+      },
       `${fileIds.length} files archived successfully`
     );
   }
 
   async restoreFile(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          status: 'active',
-          archived_at: null
-        })
-        .eq('id', fileId)
-        .select()
-        .single(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            status: 'active',
+            archived_at: null
+          })
+          .eq('id', fileId)
+          .select()
+          .single();
+        return result;
+      },
       'File restored successfully'
     );
   }
 
   async bulkRestoreFiles(fileIds: string[]): Promise<FileOperationResult> {
     return this.genericBulkFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          status: 'active',
-          archived_at: null
-        })
-        .in('id', fileIds)
-        .select(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            status: 'active',
+            archived_at: null
+          })
+          .in('id', fileIds)
+          .select();
+        return result;
+      },
       `${fileIds.length} files restored successfully`
     );
   }
 
   async removeFromArchive(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          status: 'deleted',
-          deleted_at: new Date().toISOString()
-        })
-        .eq('id', fileId)
-        .eq('status', 'archived')
-        .select()
-        .single(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            status: 'deleted',
+            deleted_at: new Date().toISOString()
+          })
+          .eq('id', fileId)
+          .eq('status', 'archived')
+          .select()
+          .single();
+        return result;
+      },
       'File removed from archive successfully'
     );
   }
 
   async restoreFromArchive(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase
-        .from("files")
-        .update({
-          status: 'active' as FileStatus,
-          archived_at: null
-        })
-        .eq("id", fileId)
-        .select()
-        .single(),
+      async () => {
+        const result = await this.supabase
+          .from("files")
+          .update({
+            status: 'active' as FileStatus,
+            archived_at: null
+          })
+          .eq("id", fileId)
+          .select()
+          .single();
+        return result;
+      },
       'File restored successfully'
     );
   }
@@ -142,7 +163,7 @@ export class ArchiveService extends FileService {
   async getStorageUsage(): Promise<ArchiveStorageUsage> {
     try {
       const { data, error } = await this.supabase
-        .rpc('get_archive_storage_usage') as { data: StorageUsageResponse | null, error: any };
+        .rpc('get_archive_storage_usage') as PostgrestSingleResponse<StorageUsageResponse>;
   
       if (error) throw error;
   
@@ -175,7 +196,6 @@ export class ArchiveService extends FileService {
 
   async searchArchivedFiles(query: string): Promise<FileWithCategory[]> {
     try {
-      // Search both filename and metadata fields
       const { data, error } = await this.supabase
         .from('files')
         .select('*')
@@ -184,7 +204,7 @@ export class ArchiveService extends FileService {
 
       if (error) throw error;
 
-      return data ? data.map(this.transformDatabaseFile) : [];
+      return data ? data.map(file => this.transformDatabaseFile(file) as FileWithCategory) : [];
     } catch (err) {
       console.error('searchArchivedFiles:', err);
       return [];
@@ -196,36 +216,42 @@ export class ArchiveService extends FileService {
     metadata: Partial<Pick<FileRow, "tags" | "description">>
   ): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          ...metadata,
-          updated_at: new Date().toISOString(),
-          metadata: {
-            last_modified_by: 'system',
-            modified_at: new Date().toISOString(),
-            ...metadata
-          }
-        })
-        .eq('id', fileId)
-        .eq('status', 'archived')
-        .select()
-        .single(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            ...metadata,
+            updated_at: new Date().toISOString(),
+            metadata: {
+              last_modified_by: 'system',
+              modified_at: new Date().toISOString(),
+              ...metadata
+            }
+          })
+          .eq('id', fileId)
+          .eq('status', 'archived')
+          .select()
+          .single();
+        return result;
+      },
       'File metadata updated successfully'
     );
   }
 
   async bulkRemoveFromArchive(fileIds: string[]): Promise<FileOperationResult> {
     return this.genericBulkFileOperation(
-      () => this.supabase
-        .from('files')
-        .update({
-          status: 'deleted',
-          deleted_at: new Date().toISOString()
-        })
-        .in('id', fileIds)
-        .eq('status', 'archived')
-        .select(),
+      async () => {
+        const result = await this.supabase
+          .from('files')
+          .update({
+            status: 'deleted',
+            deleted_at: new Date().toISOString()
+          })
+          .in('id', fileIds)
+          .eq('status', 'archived')
+          .select();
+        return result;
+      },
       `${fileIds.length} files removed from archive successfully`
     );
   }

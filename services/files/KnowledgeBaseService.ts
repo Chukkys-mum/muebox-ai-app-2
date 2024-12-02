@@ -10,10 +10,10 @@ import {
   FileCategory
 } from '@/types/FileTypes';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
-import ArchiveService from '../time-machine/ArchiveService';
+import ArchiveService, { ArchiveService as ArchiveServiceClass } from '../time-machine/ArchiveService';
 
 export class KnowledgeBaseService extends FileService {
-  private archiveService: typeof ArchiveService;
+  private archiveService: ArchiveServiceClass;
 
   constructor() {
     super();
