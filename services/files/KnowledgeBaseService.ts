@@ -1,12 +1,26 @@
 // services/files/KnowledgeBaseService.ts
 
-// services/files/KnowledgeBaseService.ts
-
 import { FileService } from './FileService';
-import { KnowledgeBaseFile, FileOperationResult, FileStorageUsage, SafeguardFolder } from '@/types/FileTypes';
+import { 
+  KnowledgeBaseFile, 
+  FileOperationResult, 
+  FileStorageUsage, 
+  SafeguardFolder,
+  FileRow,
+  FileCategory
+} from '@/types/FileTypes';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import ArchiveService from '../time-machine/ArchiveService';
 
 export class KnowledgeBaseService extends FileService {
+  private archiveService: typeof ArchiveService;
+
+  constructor() {
+    super();
+    this.archiveService = ArchiveService;
+  }
+
+
   async getKnowledgeBases(): Promise<KnowledgeBaseFile[]> {
     try {
       const { data, error } = await this.supabase
@@ -99,29 +113,28 @@ export class KnowledgeBaseService extends FileService {
     );
   }
 
-  async addFile(file: Omit<FileRow, "created_at" | "modified_at">): Promise<FileOperationResult> {
+  async addFile(file: Omit<FileRow, "created_at" | "updated_at">): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase.from("knowledge_base").insert([file]).select().single(),
+      async () => await this.supabase.from("knowledge_base").insert([file]).select().single(),
       'File added to Knowledge Base successfully'
     );
   }
 
   async removeFile(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase.from("knowledge_base").delete().eq("id", fileId).select().single(),
+      async () => await this.supabase.from("knowledge_base").delete().eq("id", fileId).select().single(),
       'File removed from Knowledge Base successfully'
     );
   }
-
   async searchFiles(query: string): Promise<FileRow[]> {
     try {
       const { data, error } = await this.supabase
         .from("knowledge_base")
         .select("*")
-        .ilike("name", `%${query}%`);
+        .ilike("file_name", `%${query}%`);
 
       if (error) throw error;
-      return data ? data.map(this.transformDatabaseFile) : [];
+      return data ? data.map(file => this.transformDatabaseFile(file)) : [];
     } catch (err) {
       console.error('searchFiles:', err);
       return [];
@@ -136,7 +149,7 @@ export class KnowledgeBaseService extends FileService {
         .eq("category", category);
 
       if (error) throw error;
-      return data ? data.map(this.transformDatabaseFile) : [];
+      return data ? data.map(file => this.transformDatabaseFile(file)) : [];
     } catch (err) {
       console.error('getFilesByCategory:', err);
       return [];
@@ -145,14 +158,14 @@ export class KnowledgeBaseService extends FileService {
 
   async updateFile(fileId: string, updates: Partial<FileRow>): Promise<FileOperationResult> {
     return this.genericFileOperation(
-      () => this.supabase.from("knowledge_base").update(updates).eq("id", fileId).select().single(),
+      async () => await this.supabase.from("knowledge_base").update(updates).eq("id", fileId).select().single(),
       'File updated in Knowledge Base successfully'
     );
   }
 
   // Archive functionality
   async archiveKnowledgeBaseFile(fileId: string): Promise<FileOperationResult> {
-    const result = await ArchiveService.archiveFile(fileId);
+    const result = await this.archiveService.archiveFile(fileId);
     if (result.success) {
       // Perform any additional knowledge base specific operations
       // For example, update the status in the knowledge_base table
@@ -165,7 +178,7 @@ export class KnowledgeBaseService extends FileService {
   }
 
   async restoreKnowledgeBaseFile(fileId: string): Promise<FileOperationResult> {
-    const result = await ArchiveService.restoreFile(fileId);
+    const result = await this.archiveService.restoreFile(fileId);
     if (result.success) {
       // Perform any additional knowledge base specific operations
       // For example, update the status in the knowledge_base table
@@ -178,7 +191,7 @@ export class KnowledgeBaseService extends FileService {
   }
 
   async bulkArchiveKnowledgeBaseFiles(fileIds: string[]): Promise<FileOperationResult> {
-    const result = await ArchiveService.bulkArchiveFiles(fileIds);
+    const result = await this.archiveService.bulkArchiveFiles(fileIds);
     if (result.success) {
       // Perform any additional knowledge base specific operations
       await this.supabase
@@ -190,7 +203,7 @@ export class KnowledgeBaseService extends FileService {
   }
 
   async bulkRestoreKnowledgeBaseFiles(fileIds: string[]): Promise<FileOperationResult> {
-    const result = await ArchiveService.bulkRestoreFiles(fileIds);
+    const result = await this.archiveService.bulkRestoreFiles(fileIds);
     if (result.success) {
       // Perform any additional knowledge base specific operations
       await this.supabase
@@ -216,7 +229,7 @@ export class KnowledgeBaseService extends FileService {
       if (error) throw error;
 
       return {
-        files: data ? data.map(this.transformDatabaseFile) : [],
+        files: data ? data.map(file => this.transformDatabaseFile(file)) : [],
         total: count || 0
       };
     } catch (err) {
