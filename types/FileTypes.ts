@@ -10,6 +10,39 @@ export interface FilePermissions {
   delete: boolean;
 }
 
+export interface TrashRow {
+  id: string;
+  file_name: string;
+  size: number;
+  type: 'file' | 'folder';
+  status: string;
+  category: string | null;
+  extension: string | null;
+  mime_type: string | null;
+  file_type: string | null;
+  parent_id: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  archived_at: string | null;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  file_path: string | null;
+  uploaded_by: string;
+  metadata: Record<string, any> | null;
+}
+
+export interface CompatibleFileRow extends TrashRow {
+  is_pinned: boolean;
+  starred: boolean;
+  tags: string[];
+  description: string;
+  is_shared: boolean;
+  shared_with: string[];
+  permissions: any | null;
+  user_id: string;
+}
+
 export interface FileRow {
   // Core properties
   id: string;

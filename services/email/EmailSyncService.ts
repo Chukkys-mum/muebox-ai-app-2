@@ -3,6 +3,12 @@
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/types_db';
 
+// Add this interface to define the shape of the header object
+interface EmailHeader {
+  name: string;
+  value: string;
+}
+
 export class EmailSyncService {
   private supabase;
 
@@ -113,9 +119,9 @@ export class EmailSyncService {
       
       // Extract email details
       const headers = emailData.payload.headers;
-      const subject = headers.find(h => h.name === 'Subject')?.value;
-      const sender = headers.find(h => h.name === 'From')?.value;
-      const recipient = headers.find(h => h.name === 'To')?.value;
+      const subject = headers.find((h: EmailHeader) => h.name === 'Subject')?.value;
+      const sender = headers.find((h: EmailHeader) => h.name === 'From')?.value;
+      const recipient = headers.find((h: EmailHeader) => h.name === 'To')?.value;
 
       // Store in database
       await this.supabase.from('emails').upsert({
@@ -153,7 +159,7 @@ export class EmailSyncService {
         email_account_id: accountId,
         subject: message.subject,
         sender: message.from.emailAddress.address,
-        recipient: { to: message.toRecipients.map(r => r.emailAddress.address) },
+        recipient: { to: message.toRecipients.map((r: { emailAddress: { address: string } }) => r.emailAddress.address) },
         email_body: message.bodyPreview,
         status: 'analyzed',
       });

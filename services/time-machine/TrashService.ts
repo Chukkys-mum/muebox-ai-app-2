@@ -1,94 +1,108 @@
-// services/time-machine/TrashService.ts
+// /services/time-machine/TrashService.ts
 
-import { supabase } from "@/supabase/supabaseClient";
+import { supabase } from "@/utils/supabase/client";
+import { FileRow, FileStatus, FileCategory, CompatibleFileRow } from "@/types/FileTypes";
+import { Database } from '@/types/types_db';
+import { BaseService } from '../BaseService';
 
-// Define type for a trashed file
-export type TrashedFile = {
-  id: string;
-  name: string;
-  size: number; // File size in bytes
-  deletedAt: string; // ISO timestamp
-  category?: string; // File category (e.g., image, document, etc.)
-  tags?: string[]; // Optional tags for the file
-  description?: string; // Optional description for the file
+
+type TrashRow = Database['public']['Tables']['files']['Row'];
+type StorageUsage = {
+  used_space: number;
+  total_space: number;
+  storage_breakdown: Record<string, number>;
 };
 
-export const TrashService = {
-  /**
-   * Fetch trashed files with pagination, ordered by deletion date.
-   * @param {number} page - Page number (starts from 1).
-   * @param {number} limit - Number of files per page.
-   * @returns {Promise<{ files: TrashedFile[]; total: number }>} Paginated trashed files and total count.
-   */
+interface TrashedFile {
+  id: string;
+  name: string;
+  size: number;
+  deletedAt: string;
+  tags: string[] | null;
+  description: string | null;
+}
+
+class TrashService extends BaseService {
   async getTrashedFiles(
     page: number = 1,
     limit: number = 10
-  ): Promise<{ files: TrashedFile[]; total: number }> {
+  ): Promise<{ files: FileRow[]; total: number }> {
     try {
-      const start = (page - 1) * limit;
-      const end = start + limit - 1;
-
-      const { data, error, count } = await supabase
-        .from("trash")
-        .select("id, name, size, deleted_at, tags, description", { count: "exact" })
-        .order("deleted_at", { ascending: false })
-        .range(start, end);
-
-      if (error) {
-        throw new Error(`Error fetching trashed files: ${error.message}`);
+          const start = (page - 1) * limit;
+          const end = start + limit - 1;
+      
+          const { data, error, count } = await this.supabase
+            .from("files")
+            .select("*", { count: "exact" })
+            .eq("status", "trashed")
+            .order("deleted_at", { ascending: false })
+            .range(start, end);
+      
+          if (error) throw error;
+      
+          const files = (data || []).map((row: TrashRow): FileRow => {
+            // Create a compatible object that matches FileRow
+            const compatibleRow: CompatibleFileRow = {
+              ...row,
+              type: row.type || 'file',
+              status: row.status || 'trashed',
+              extension: row.extension || null,
+              mime_type: row.mime_type || row.file_type || null,
+              is_pinned: false,
+              starred: false,
+              tags: [],
+              description: '',
+              is_shared: false,
+              shared_with: [],
+              permissions: null,
+              user_id: row.uploaded_by,
+            };
+            return this.transformDatabaseFile(compatibleRow);
+          });
+      
+          return { files, total: count || 0 };
+        } catch (err) {
+          console.error(err);
+          return { files: [], total: 0 };
+        }
       }
 
-      const files = (data || []).map((file) => ({
-        id: file.id,
-        name: file.name,
-        size: file.size,
-        deletedAt: file.deleted_at,
-        tags: file.tags || [],
-        description: file.description || "",
-      }));
-
-      return { files, total: count || 0 };
-    } catch (err) {
-      console.error(err);
-      return { files: [], total: 0 };
-    }
-  },
-
-  /**
-   * Fetch the total and used storage for trashed files.
-   * @returns {Promise<{ used: number; total: number; breakdown?: Record<string, number> }>} Storage usage details.
-   */
-  async getStorageUsage(): Promise<{ used: number; total: number; breakdown?: Record<string, number> }> {
+  async getStorageUsage(): Promise<{ 
+    used: number; 
+    total: number; 
+    breakdown: Record<string, number>; 
+  }> {
     try {
-      const { data, error } = await supabase.rpc("get_trash_storage_usage");
+      const { data, error } = await this.supabase.rpc("get_storage_usage") as { data: StorageUsage, error: any };
 
-      if (error) {
-        throw new Error(`Error fetching storage usage: ${error.message}`);
-      }
+      if (error) throw error;
 
-      // Simulate breakdown (e.g., calculated or fetched separately)
-      const breakdown = {
-        images: data?.images || 0,
-        videos: data?.videos || 0,
-        documents: data?.documents || 0,
-        others: data?.others || 0,
+      return {
+        used: data.used_space,
+        total: data.total_space,
+        breakdown: data.storage_breakdown
       };
-
-      return { used: data?.used || 0, total: data?.total || 0, breakdown };
     } catch (err) {
       console.error(err);
-      return { used: 0, total: 0, breakdown: {} };
+      return {
+        used: 0,
+        total: 0,
+        breakdown: {
+          images: 0,
+          videos: 0,
+          documents: 0,
+          others: 0
+        }
+      };
     }
-  },
+  }
 
-  /**
-   * Restore a file from trash by deleting it from the trash table.
-   * @param {string} fileId - The ID of the file to restore.
-   * @returns {Promise<boolean>} `true` if successful, otherwise `false`.
-   */
   async restoreFile(fileId: string): Promise<boolean> {
     try {
-      const { error } = await supabase.from("trash").delete().eq("id", fileId);
+      const { error } = await this.supabase
+        .from("files")
+        .update({ status: 'active', deleted_at: null })
+        .eq("id", fileId);
 
       if (error) {
         throw new Error(`Error restoring file: ${error.message}`);
@@ -99,16 +113,14 @@ export const TrashService = {
       console.error(err);
       return false;
     }
-  },
+  }
 
-  /**
-   * Restore multiple files in bulk.
-   * @param {string[]} fileIds - Array of file IDs to restore.
-   * @returns {Promise<boolean>} `true` if successful, otherwise `false`.
-   */
   async bulkRestoreFiles(fileIds: string[]): Promise<boolean> {
     try {
-      const { error } = await supabase.from("trash").delete().in("id", fileIds);
+      const { error } = await this.supabase
+        .from("files")
+        .update({ status: 'active', deleted_at: null })
+        .in("id", fileIds);
 
       if (error) {
         throw new Error(`Error restoring files: ${error.message}`);
@@ -119,16 +131,15 @@ export const TrashService = {
       console.error(err);
       return false;
     }
-  },
+  }
 
-  /**
-   * Permanently delete a file from the trash.
-   * @param {string} fileId - The ID of the file to delete.
-   * @returns {Promise<boolean>} `true` if successful, otherwise `false`.
-   */
   async deleteFile(fileId: string): Promise<boolean> {
     try {
-      const { error } = await supabase.from("trash").delete().eq("id", fileId);
+      const { error } = await this.supabase
+        .from("files")
+        .delete()
+        .eq("id", fileId)
+        .eq("status", "trashed");
 
       if (error) {
         throw new Error(`Error deleting file permanently: ${error.message}`);
@@ -139,16 +150,15 @@ export const TrashService = {
       console.error(err);
       return false;
     }
-  },
+  }
 
-  /**
-   * Permanently delete multiple files in bulk.
-   * @param {string[]} fileIds - Array of file IDs to delete.
-   * @returns {Promise<boolean>} `true` if successful, otherwise `false`.
-   */
   async bulkDeleteFiles(fileIds: string[]): Promise<boolean> {
     try {
-      const { error } = await supabase.from("trash").delete().in("id", fileIds);
+      const { error } = await this.supabase
+        .from("files")
+        .delete()
+        .in("id", fileIds)
+        .eq("status", "trashed");
 
       if (error) {
         throw new Error(`Error deleting files permanently: ${error.message}`);
@@ -159,31 +169,27 @@ export const TrashService = {
       console.error(err);
       return false;
     }
-  },
+  }
 
-  /**
-   * Search for trashed files by name.
-   * @param {string} query - Search term to filter files by name.
-   * @returns {Promise<TrashedFile[]>} Array of matching trashed files.
-   */
   async searchTrashedFiles(query: string): Promise<TrashedFile[]> {
     try {
-      const { data, error } = await supabase
-        .from("trash")
-        .select("id, name, size, deleted_at, tags, description")
-        .ilike("name", `%${query}%`); // Case-insensitive partial match
+      const { data, error } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("status", "trashed")
+        .ilike("file_name", `%${query}%`);
 
       if (error) {
         throw new Error(`Error searching trashed files: ${error.message}`);
       }
 
-      const files = (data || []).map((file) => ({
+      const files = (data || []).map((file): TrashedFile => ({
         id: file.id,
-        name: file.name,
+        name: file.file_name,
         size: file.size,
-        deletedAt: file.deleted_at,
-        tags: file.tags || [],
-        description: file.description || "",
+        deletedAt: file.deleted_at || '',
+        tags: file.tags || null,
+        description: file.description || null,
       }));
 
       return files;
@@ -191,20 +197,21 @@ export const TrashService = {
       console.error(err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Update metadata for a trashed file.
-   * @param {string} fileId - The ID of the file to update.
-   * @param {Partial<Pick<TrashedFile, "tags" | "description">>} metadata - Metadata to update.
-   * @returns {Promise<boolean>} `true` if successful, otherwise `false`.
-   */
   async updateTrashedFileMetadata(
     fileId: string,
     metadata: Partial<Pick<TrashedFile, "tags" | "description">>
   ): Promise<boolean> {
     try {
-      const { error } = await supabase.from("trash").update(metadata).eq("id", fileId);
+      const { error } = await this.supabase
+        .from("files")
+        .update({
+          tags: metadata.tags,
+          description: metadata.description
+        })
+        .eq("id", fileId)
+        .eq("status", "trashed");
 
       if (error) {
         throw new Error(`Error updating file metadata: ${error.message}`);
@@ -215,5 +222,7 @@ export const TrashService = {
       console.error(err);
       return false;
     }
-  },
-};
+  }
+}
+
+export default new TrashService();
