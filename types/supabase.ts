@@ -75,6 +75,44 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['files']['Insert']>;
       };
 
+      email_accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          email_address: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: string;
+          email_address: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          email_address?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "email_accounts_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      },
+
       archives: {
         Row: {
           id: string;

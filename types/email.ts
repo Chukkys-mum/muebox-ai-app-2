@@ -14,6 +14,14 @@ export interface EmailAttachment {
   file_path?: string | null;
 }
 
+// Updated EmailAccount interface
+export interface EmailAccount extends WithTimestamps, WithStatus {
+  id: string;
+  user_id: string;
+  provider: string;
+  email_address: string;
+}
+
 export interface EmailSender {
   id?: string;
   name: string;
