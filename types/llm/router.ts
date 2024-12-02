@@ -1,6 +1,10 @@
 // /types/llm/router.ts
 // Router interfaces
 
+import { Scope } from './scope';
+import { PromptAnalysis } from './classifier';
+
+
 export interface RoutingRequest {
     id: string;
     prompt: string;

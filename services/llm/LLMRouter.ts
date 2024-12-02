@@ -96,27 +96,41 @@ import {
     }
   
     public async getRoutingHistory(filter?: Partial<RoutingRequest>): Promise<RoutingRequest[]> {
-      try {
-        let query = this.supabase
-          .from('routing_history')
-          .select('*')
-          .order('created_at', { ascending: false });
-  
-        if (filter) {
-          Object.entries(filter).forEach(([key, value]) => {
-            query = query.eq(key, value);
+        try {
+          let query = this.supabase
+            .from('routing_history')
+            .select('*')
+            .order('created_at', { ascending: false });
+      
+          if (filter) {
+            Object.entries(filter).forEach(([key, value]) => {
+              if (value !== undefined) {
+                query = query.eq(key, value);
+              }
+            });
+          }
+      
+          const { data, error } = await query;
+          if (error) throw error;
+      
+          // Transform the database records into RoutingRequest format
+          return data.map(record => {
+            const metadata = record.metadata as Record<string, any>;
+            return {
+              id: record.request_id,
+              prompt: metadata?.prompt || '',
+              forceLLM: record.llm_used,
+              scope: metadata?.scope,
+              maxRetries: metadata?.maxRetries || 0,
+              timeout: metadata?.timeout || 30000,
+              priority: metadata?.priority || 'normal'
+            } as RoutingRequest;
           });
+        } catch (error) {
+          console.error('Failed to fetch routing history:', error);
+          return [];
         }
-  
-        const { data, error } = await query;
-        if (error) throw error;
-  
-        return data;
-      } catch (error) {
-        console.error('Failed to fetch routing history:', error);
-        return [];
       }
-    }
   
     public async cancelRequest(requestId: string): Promise<boolean> {
       const request = this.activeRequests.get(requestId);
@@ -137,27 +151,21 @@ import {
       return Promise.resolve(Array.from(this.activeRequests.values()));
     }
   
-    public async handleError(error: RouterError): Promise<RoutingResponse | null> {
-      console.error('Router error:', error);
-  
-      // Log error
-      await this.supabase
-        .from('routing_errors')
-        .insert([{
-          error_code: error.code,
-          error_message: error.message,
-          llm_id: error.llmId,
-          context: error.context
-        }]);
-  
-      // If error is retryable and we haven't exceeded retries
-      if (error.retryable) {
-        // Implement retry logic here
-        return null;
+    public async handleError(error: RouterError): Promise<RoutingResponse> {  // Removed null
+        console.error('Router error:', error);
+      
+        await this.supabase
+          .from('routing_errors')
+          .insert([{
+            error_code: error.code,
+            error_message: error.message,
+            llm_id: error.llmId,
+            context: error.context
+          }]);
+      
+        // Instead of returning null, throw the error or return a fallback response
+        throw error;  // Or return a fallback response
       }
-  
-      throw error;
-    }
   
     private async determineLLM(request: RoutingRequest): Promise<string> {
       if (request.forceLLM) {
@@ -186,17 +194,19 @@ import {
     }
   
     private calculateCosts(usage: any, costConfig: any): {
-      promptCost: number;
-      completionCost: number;
-      totalCost: number;
-    } {
-      return {
-        promptCost: usage.prompt_tokens * costConfig.promptTokens,
-        completionCost: usage.completion_tokens * costConfig.completionTokens,
-        totalCost: (usage.prompt_tokens * costConfig.promptTokens) +
-                  (usage.completion_tokens * costConfig.completionTokens)
-      };
-    }
+        promptCost: number;
+        completionCost: number;
+        totalCost: number;
+        currency: string;  // Added this
+      } {
+        return {
+          promptCost: usage.prompt_tokens * costConfig.promptTokens,
+          completionCost: usage.completion_tokens * costConfig.completionTokens,
+          totalCost: (usage.prompt_tokens * costConfig.promptTokens) +
+                    (usage.completion_tokens * costConfig.completionTokens),
+          currency: costConfig.currency || 'USD'  // Added this
+        };
+      }
   
     private createError(
       code: string,
@@ -208,22 +218,29 @@ import {
     }
   
     private async logResponse(response: RoutingResponse): Promise<void> {
-      try {
-        await this.supabase
-          .from('routing_history')
-          .insert([{
-            request_id: response.requestId,
-            llm_used: response.llmUsed,
-            token_usage: response.tokenUsage,
-            costs: response.costs,
-            timing: response.timing,
-            metadata: response.metadata
-          }]);
-      } catch (error) {
-        console.error('Failed to log routing response:', error);
+        try {
+          // Convert Date objects to ISO strings for JSON compatibility
+          const timingForDb = {
+            startedAt: response.timing.startedAt.toISOString(),
+            completedAt: response.timing.completedAt.toISOString(),
+            totalDuration: response.timing.totalDuration
+          };
+      
+          await this.supabase
+            .from('routing_history')
+            .insert([{
+              request_id: response.requestId,
+              llm_used: response.llmUsed,
+              token_usage: response.tokenUsage,
+              costs: response.costs,
+              timing: timingForDb,  // Use the converted timing
+              metadata: response.metadata
+            }]);
+        } catch (error) {
+          console.error('Failed to log routing response:', error);
+        }
       }
-    }
-  }
+  } // Close LLMRouter class
   
   // Export singleton instance
   export const llmRouter = new LLMRouter();

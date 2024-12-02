@@ -3,19 +3,21 @@
 
 import { SpeechService, STTConfig, TTSConfig } from '@/types/llm/speech';
 
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+
 export class SpeechManager implements SpeechService {
-  private recognition: any; // Web Speech API recognition instance
-  private synthesis: SpeechSynthesis;
+  private recognition: SpeechRecognition | null = null;
+  private synthesis: SpeechSynthesis = window.speechSynthesis;
   private stream: MediaStream | null = null;
 
   constructor() {
     // Initialize Web Speech API
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        this.recognition = new SpeechRecognition();
+      const Recognition = (window as any).SpeechRecognition || 
+                        (window as any).webkitSpeechRecognition as SpeechRecognitionConstructor;
+      if (Recognition) {
+        this.recognition = new Recognition();
       }
-      this.synthesis = window.speechSynthesis;
     }
   }
 
@@ -29,11 +31,12 @@ export class SpeechManager implements SpeechService {
         audio: true 
       });
 
-      this.recognition.continuous = config.continuous ?? true;
-      this.recognition.interimResults = config.interimResults ?? true;
-      this.recognition.lang = config.language ?? 'en-US';
-
-      this.recognition.start();
+      if (this.recognition) {
+        this.recognition.continuous = config.continuous ?? true;
+        this.recognition.interimResults = config.interimResults ?? true;
+        this.recognition.lang = config.language ?? 'en-US';
+        this.recognition.start();
+      }
 
       return this.stream;
     } catch (error) {

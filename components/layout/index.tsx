@@ -31,8 +31,8 @@ interface SubscriptionWithProduct extends Subscription {
 }
 interface Props {
   children: React.ReactNode;
-  title: string;
-  description: string;
+  title?: string;  // Made optional
+  description?: string;  // Made optional
   user: User | null | undefined;
   products: ProductWithPrices[];
   subscription: SubscriptionWithProduct | null;

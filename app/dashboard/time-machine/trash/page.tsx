@@ -1,31 +1,35 @@
 // /app/dashboard/time-machine/trash/page.tsx
 
-import React from "react";
-import { useRouter } from "next/router";
-import Head from "next/head";
+import  Metadata  from 'next';
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
 import TrashCan from "@/components/dashboard/time-machine/TrashCan";
 
-const TrashPage = () => {
-  const router = useRouter();
-  const { userId } = router.query;
+// Export metadata for the page
+export const metadata: Metadata = {
+  title: 'Trash | My Application',
+  description: 'View and manage trashed files.'
+};
 
-  // Display a loading message while the user ID is being retrieved
-  if (!userId || typeof userId !== "string") {
-    return <p>Loading...</p>;
+export default async function TrashPage() {
+  const cookieStore = cookies();
+  const supabase = createClient();
+  
+  // Get the current session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // Loading state is handled automatically by Suspense
+  if (!session?.user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Please sign in to view trash</p>
+      </div>
+    );
   }
 
   return (
-    <>
-      {/* SEO Metadata */}
-      <Head>
-        <title>Trash | My Application</title>
-        <meta name="description" content="View and manage trashed files." />
-      </Head>
-
-      {/* Main Component */}
-      <TrashCan userId={userId} />
-    </>
+    <div className="container mx-auto py-6">
+      <TrashCan userId={session.user.id} />
+    </div>
   );
-};
-
-export default TrashPage;
+}

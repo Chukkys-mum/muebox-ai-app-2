@@ -35,10 +35,10 @@ export interface Scope {
 }
 
 export interface ScopeManagerInterface {
-  createScope(config: Partial<Scope>): Scope;
-  updateScope(id: string, updates: Partial<Scope>): Scope;
-  getScope(id: string): Scope | null;
-  deleteScope(id: string): boolean;
-  validateScope(scope: Scope): boolean;
-  listScopes(filter?: Partial<Scope>): Scope[];
-}
+    createScope(config: Partial<Scope>): Promise<Scope>;
+    updateScope(id: string, updates: Partial<Scope>): Promise<Scope>;
+    getScope(id: string): Promise<Scope | null>;
+    deleteScope(id: string): Promise<boolean>;
+    validateScope(scope: Scope): boolean;
+    listScopes(filter?: Partial<Scope>): Promise<Scope[]>;
+  }

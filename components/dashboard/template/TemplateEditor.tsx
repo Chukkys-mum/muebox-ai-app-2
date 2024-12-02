@@ -1,7 +1,6 @@
 // - TemplateEditor.tsx (template creation/editing UI)
 
 // /components/template/TemplateEditor.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Template, TemplateCategory } from '@/types/template/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,45 +28,53 @@ interface TemplateEditorProps {
   onCancel?: () => void;
 }
 
+const getDefaultTemplate = (): Partial<Template> => ({
+  name: '',
+  description: '',
+  category: 'custom',
+  version: '1.0.0',
+  metadata: {
+    author: '',  // Will need to be set from user context
+    created: new Date(),
+    modified: new Date(),
+    tags: [],
+    isPublic: false,
+    usageCount: 0
+  },
+  configuration: {
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    },
+    outputFormat: {
+      type: 'text'
+    },
+    llmPreferences: {
+      preferred: [],
+      excluded: []
+    },
+    defaultParams: {
+      temperature: 0.7,
+      topP: 1,
+      maxTokens: 1000
+    }
+  },
+  prompts: {
+    main: '',
+    variables: []
+  },
+  validation: []
+});
+
 export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   initialTemplate,
   onSave,
   onCancel
 }) => {
-  const [template, setTemplate] = useState<Partial<Template>>(
-    initialTemplate || {
-      name: '',
-      description: '',
-      category: 'custom',
-      metadata: {
-        tags: [],
-        isPublic: false
-      },
-      configuration: {
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        },
-        outputFormat: {
-          type: 'text'
-        },
-        llmPreferences: {
-          preferred: [],
-          excluded: []
-        },
-        defaultParams: {
-          temperature: 0.7,
-          topP: 1,
-          maxTokens: 1000
-        }
-      },
-      prompts: {
-        main: '',
-        variables: []
-      },
-      validation: []
-    }
-  );
+  const [template, setTemplate] = useState<Partial<Template>>(() => {
+  const defaultTemplate = getDefaultTemplate();
+  return initialTemplate ? { ...defaultTemplate, ...initialTemplate } : defaultTemplate;
+});
 
   const [activeTab, setActiveTab] = useState('basic');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -76,27 +83,30 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   const handleInputChange = (
     field: string,
     value: any,
-    section?: string,
+    section?: keyof Template,
     subsection?: string
   ) => {
     setTemplate(prev => {
       if (section) {
         if (subsection) {
+          const sectionData = prev[section] || {};
+          const subsectionData = (sectionData as any)?.[subsection] || {};
           return {
             ...prev,
             [section]: {
-              ...prev[section],
+              ...sectionData,
               [subsection]: {
-                ...prev[section]?.[subsection],
+                ...subsectionData,
                 [field]: value
               }
             }
           };
         }
+        const sectionData = prev[section] || {};
         return {
           ...prev,
           [section]: {
-            ...prev[section],
+            ...sectionData,
             [field]: value
           }
         };
@@ -116,8 +126,17 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Update modified date before saving
+      const updatedTemplate = {
+        ...template,
+        metadata: {
+          ...template.metadata,
+          modified: new Date()
+        }
+      };
+
       // Validate template
-      const validation = await templateValidator.validateTemplate(template as Template);
+      const validation = await templateValidator.validateTemplate(updatedTemplate as Template);
       
       if (!validation.isValid) {
         setValidationErrors(validation.errors);
@@ -131,8 +150,8 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
       // Save template
       const savedTemplate = initialTemplate?.id
-        ? await templateManager.updateTemplate(initialTemplate.id, template as Template)
-        : await templateManager.createTemplate(template as Template);
+        ? await templateManager.updateTemplate(initialTemplate.id, updatedTemplate as Template)
+        : await templateManager.createTemplate(updatedTemplate as Template);
 
       toast({
         title: 'Success',
@@ -213,12 +232,32 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
                 </div>
 
                 <div>
+                  <Label htmlFor="version">Version</Label>
+                  <Input
+                    id="version"
+                    value={template.version}
+                    onChange={e => handleInputChange('version', e.target.value)}
+                    placeholder="1.0.0"
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="tags">Tags (comma-separated)</Label>
                   <Input
                     id="tags"
                     value={template.metadata?.tags?.join(', ')}
                     onChange={e => handleTagsChange(e.target.value)}
                     placeholder="Enter tags"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="author">Author</Label>
+                  <Input
+                    id="author"
+                    value={template.metadata?.author}
+                    onChange={e => handleInputChange('author', e.target.value, 'metadata')}
+                    placeholder="Enter author name"
                   />
                 </div>
               </div>
@@ -271,7 +310,6 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
           <TabsContent value="config">
             <div className="space-y-4">
-              {/* LLM Configuration */}
               <div className="grid gap-4">
                 <div>
                   <Label>Temperature</Label>

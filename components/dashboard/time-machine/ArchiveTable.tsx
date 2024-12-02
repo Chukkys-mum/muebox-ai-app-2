@@ -1,12 +1,13 @@
 // components/dashboard/time-machine/ArchiveTable.tsx
-
-import React from "react";
+import React, { useState } from "react";
 import { FileRow } from "@/types/FileTypes";
+import { Button } from "@/components/ui/button";
+import { formatFileSize } from "@/utils/formatters"; // We'll need to create this
 
 interface ArchiveTableProps {
   data: FileRow[];
-  onRestore: (id: string) => void;
-  onDelete: (id: string) => void;
+  onRestore: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -16,58 +17,108 @@ export const ArchiveTable: React.FC<ArchiveTableProps> = ({
   onDelete,
   isLoading,
 }) => {
+  const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
+
+  const handleAction = async (action: 'restore' | 'delete', fileId: string) => {
+    try {
+      setProcessingFiles(prev => new Set(prev).add(fileId));
+      if (action === 'restore') {
+        await onRestore(fileId);
+      } else {
+        await onDelete(fileId);
+      }
+    } finally {
+      setProcessingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(fileId);
+        return newSet;
+      });
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
       {isLoading ? (
-        <p className="text-gray-500">Loading archived files...</p>
+        <div className="flex justify-center items-center py-8">
+          <p className="text-gray-500">Loading archived files...</p>
+        </div>
       ) : data.length === 0 ? (
-        <p className="text-gray-500">No archived files found.</p>
+        <div className="flex flex-col items-center justify-center py-8">
+          <p className="text-gray-500">No archived files found.</p>
+        </div>
       ) : (
-        <table className="min-w-full border border-gray-300 dark:border-gray-700 rounded-md">
-          <thead className="bg-gray-100 dark:bg-gray-800">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-                Category
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Size
               </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Archived Date
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {data.map((file) => (
-              <tr
-                key={file.id}
-                className="border-t border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
-              >
-                <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                  {file.name}
+              <tr key={file.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {file.name}
+                    </span>
+                  </div>
                 </td>
-                <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                  {file.category}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {typeof file.size === 'number' 
+                    ? formatFileSize(file.size) 
+                    : file.size}
                 </td>
-                <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                  {file.size}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {file.category || file.type || 'Unknown'}
                 </td>
-                <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                  <button
-                    onClick={() => onRestore(file.id)}
-                    className="mr-2 text-blue-500 hover:underline"
-                  >
-                    Restore
-                  </button>
-                  <button
-                    onClick={() => onDelete(file.id)}
-                    className="text-red-500 hover:underline"
-                  >
-                    Delete Permanently
-                  </button>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {formatDate(file.archived_at || file.modified_at)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAction('restore', file.id)}
+                      disabled={processingFiles.has(file.id)}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    >
+                      Restore
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAction('delete', file.id)}
+                      disabled={processingFiles.has(file.id)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}

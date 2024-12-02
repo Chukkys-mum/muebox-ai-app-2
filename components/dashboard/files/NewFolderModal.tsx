@@ -2,56 +2,61 @@
 // Modal for creating folders in files and in a knowledge base.
 
 import React, { useState } from "react";
-import Modal from "@/components/common/Modal";
+import { Dialog } from "@/components/ui/dialog"; // Using shadcn Dialog instead of Modal
 
-const NewFolderModal: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface NewFolderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (folderName: string) => void;
+}
+
+const NewFolderModal: React.FC<NewFolderModalProps> = ({
+  isOpen,
+  onClose,
+  onCreate,
+}) => {
   const [folderName, setFolderName] = useState("");
 
   const handleCreate = () => {
-    console.log(`Folder Created: ${folderName}`);
-    setFolderName("");
-    setIsOpen(false);
+    if (folderName.trim()) {
+      onCreate(folderName);
+      setFolderName("");
+      onClose();
+    }
   };
 
   return (
-    <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-      >
-        Create New Folder
-      </button>
-      <Modal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        title="Create New Folder"
-        footer={
-          <>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 bg-gray-300 rounded-md"
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog.Content>
+        <Dialog.Header>
+          <Dialog.Title>Create New Folder</Dialog.Title>
+        </Dialog.Header>
+        <div className="space-y-4">
+          <input
+            type="text"
+            placeholder="Folder Name"
+            value={folderName}
+            onChange={(e) => setFolderName(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+          <div className="flex justify-end space-x-2">
+            <button 
+              onClick={onClose} 
+              className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               Cancel
             </button>
             <button
               onClick={handleCreate}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              disabled={!folderName.trim()}
             >
               Create
             </button>
-          </>
-        }
-      >
-        <input
-          type="text"
-          value={folderName}
-          onChange={(e) => setFolderName(e.target.value)}
-          placeholder="Enter folder name"
-          className="w-full p-2 border border-gray-300 rounded-md"
-        />
-      </Modal>
-    </>
+          </div>
+        </div>
+      </Dialog.Content>
+    </Dialog>
   );
 };
 

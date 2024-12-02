@@ -34,9 +34,10 @@ export default function AudioPlayer(props: {
   const elapsedDisplay = formatDurationDisplay(currentProgress);
 
   const togglePlayPause = () => {
+    if (!audioRef.current) return; // Add early return if audioRef.current is null
+  
     if (isPlaying) {
-      audioRef.current;
-      audioRef.current?.pause();
+      audioRef.current.pause();
       setIsPlaying(false);
     } else if (!started) {
       audioRef.current.load();
@@ -49,7 +50,7 @@ export default function AudioPlayer(props: {
       };
     } else {
       audioRef.current
-        ?.play()
+        .play()
         .catch((error: any) => console.log('Error playing audio:', error));
       setIsPlaying(true);
     }

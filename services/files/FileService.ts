@@ -1,345 +1,232 @@
 // services/files/FileService.ts
-// Handles Supabase interactions for file upload, deletion, metadata fetching, and updates.
 
-import { createClient } from '@/utils/supabase/client';
-import { FileRow } from "@/types/FileTypes";
+import { BaseService } from '../BaseService';
+import { 
+  FileRow, 
+  FileStatus, 
+  FileCategory,
+  FilePermissions,
+  FileOperationResult,
+  FileStorageUsage,
+  FileSettings
+} from "@/types/FileTypes";
+import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import { logger } from '@/utils/logger';
 
-
-const supabase = createClient();
-
-interface FileStorageUsage {
-  used: number;
-  total: number;
-  breakdown: Record<string, number>;
+// Custom error class for FileService
+export class FileServiceError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'FileServiceError';
+  }
 }
 
-
-export const FileService = {
-  /**
-   * Fetch all files from the database.
-   * @returns {Promise<FileRow[]>} Array of files or an empty array on error.
-   */
+export class FileService extends BaseService {
   async fetchFiles(): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase.from('files').select('*');
-  
-      if (error) {
-        throw new Error(`Error fetching files: ${error.message}`);
-      }
-  
-      // Map backend fields to frontend fields
-      return (
-        data?.map((file) => ({
-          ...file,
-          modifiedAt: file.modified_at, // Map backend `modified_at` to frontend `modifiedAt`
-        })) || []
-      );
-    } catch (error) {
-      console.error('fetchFiles:', error);
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) throw error;
+      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+    } catch (err) {
+      logger.error('Failed to fetch files', { error: err });
       return [];
     }
-  },
+  }
 
-  /**
-   * Fetch file settings.
-   * @returns {Promise<{ maxFileSize: number; allowedFileTypes: string[] } | null>} File settings or null on error.
-   */
-  async getFileSettings(): Promise<{ maxFileSize: number; allowedFileTypes: string[] } | null> {
+  async getFileSettings(): Promise<FileSettings | null> {
     try {
-      const { data, error } = await supabase.from("file_settings").select("*").single();
-  
-      if (error) {
-        throw new Error(`Error fetching file settings: ${error.message}`);
-      }
-  
+      const { data, error } = await this.supabase
+        .from("file_settings")
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
       return {
-        ...data,
-        allowedFileTypes: (data?.allowedFileTypes || "")
-          .split(",")
-          .map((type: string) => type.trim()),
+        maxFileSize: data.max_file_size,
+        allowedFileTypes: data.allowed_file_types || []
       };
-    } catch (error) {
-      console.error("getFileSettings:", error);
+    } catch (err) {
+      console.error('getFileSettings:', err);
       return null;
     }
-  },
+  }
 
-  /**
-   * Update file settings.
-   * @param settings - Object containing maxFileSize and allowedFileTypes.
-   * @returns {Promise<boolean>} True if update is successful, false otherwise.
-   */
-  async updateFileSettings(settings: { maxFileSize: number; allowedFileTypes: string[] }): Promise<boolean> {
+  async updateFileSettings(settings: FileSettings): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from("file_settings")
         .update({
-          ...settings,
-          allowedFileTypes: settings.allowedFileTypes.join(","),
+          max_file_size: settings.maxFileSize,
+          allowed_file_types: settings.allowedFileTypes
         })
         .eq("id", 1);
 
-      if (error) {
-        throw new Error(`Error updating file settings: ${error.message}`);
-      }
+      if (error) throw error;
       return true;
-    } catch (error) {
-      console.error("updateFileSettings:", error);
+    } catch (err) {
+      console.error('updateFileSettings:', err);
       return false;
     }
-  },
+  }
 
-  /**
-   * Search files by name.
-   * @param query - Search term to filter files by name.
-   * @returns {Promise<FileRow[]>} Array of matching files or an empty array on error.
-   */
   async searchFiles(query: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from("files")
         .select("*")
-        .ilike("name", `%${query}%`);
+        .ilike("file_name", `%${query}%`);
 
-      if (error) {
-        throw new Error(`Error searching files: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error("searchFiles:", error);
+      if (error) throw error;
+      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+    } catch (err) {
+      console.error('searchFiles:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Delete a file by its ID.
-   * @param fileId - The ID of the file to delete.
-   * @returns {Promise<boolean>} True if deletion is successful, false otherwise.
-   */
-  async deleteFile(fileId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase.from("files").delete().eq("id", fileId);
+  async deleteFile(fileId: string): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update({ 
+          status: 'deleted' as FileStatus,
+          deleted_at: new Date().toISOString()
+        })
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'File deleted successfully'
+    );
+  }
 
-      if (error) {
-        throw new Error(`Error deleting file: ${error.message}`);
-      }
+  async uploadFile(file: Partial<FileRow>): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from('files')
+        .insert([this.transformToDatabase(file)])
+        .select()
+        .single(),
+      'File uploaded successfully'
+    );
+  }
 
-      return true;
-    } catch (error) {
-      console.error("deleteFile:", error);
-      return false;
-    }
-  },
+  async updateFile(fileId: string, updates: Partial<FileRow>): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update(this.transformToDatabase(updates))
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'File updated successfully'
+    );
+  }
 
-  /**
-   * Upload a new file.
-   * @param file - File metadata object to insert into the database.
-   * @returns {Promise<boolean>} True if upload is successful, false otherwise.
-   */
-  async uploadFile(file: Omit<FileRow, "id" | "created_at" | "modified_at">): Promise<boolean> {
-    try {
-      const { error } = await supabase.from("files").insert([file]);
-
-      if (error) {
-        throw new Error(`Error uploading file: ${error.message}`);
-      }
-
-      return true;
-    } catch (error) {
-      console.error("uploadFile:", error);
-      return false;
-    }
-  },
-
-  /**
-   * Fetch files by folder ID.
-   * @param folderId - ID of the folder to fetch files for.
-   * @returns {Promise<FileRow[]>} Array of files in the folder or an empty array on error.
-   */
   async getFilesByFolder(folderId: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase.from("files").select("*").eq("parent_id", folderId);
+      const { data, error } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("parent_id", folderId)
+        .eq("status", "active");
 
-      if (error) {
-        throw new Error(`Error fetching files for folder ${folderId}: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error("getFilesByFolder:", error);
+      if (error) throw error;
+      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+    } catch (err) {
+      console.error('getFilesByFolder:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Fetch files by category.
-   * @param category - The category of files to fetch (e.g., image, video).
-   * @returns {Promise<FileRow[]>} Array of files in the category or an empty array on error.
-   */
-  async getFilesByCategory(category: FileRow["category"]): Promise<FileRow[]> {
+  async getFilesByCategory(category: FileCategory): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase.from("files").select("*").eq("category", category);
+      const { data, error } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("category", category)
+        .eq("status", "active");
 
-      if (error) {
-        throw new Error(`Error fetching files for category ${category}: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error("getFilesByCategory:", error);
+      if (error) throw error;
+      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+    } catch (err) {
+      console.error('getFilesByCategory:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Fetch all files and folders from the root directory.
-   * @returns {Promise<FileRow[]>} Array of files and folders in the root directory.
-   */
   async getFilesAndFolders(): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase.from("files").select("*").is("parent_id", null);
+      const { data, error } = await this.supabase
+        .from("files")
+        .select("*")
+        .is("parent_id", null)
+        .eq("status", "active");
 
-      if (error) {
-        throw new Error(`Error fetching files and folders: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error("getFilesAndFolders:", error);
+      if (error) throw error;
+      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+    } catch (err) {
+      console.error('getFilesAndFolders:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Restore a deleted file.
-   * @param fileId - The ID of the file to restore.
-   * @returns {Promise<boolean>} True if restoration is successful, false otherwise.
-   */
-  async restoreFile(fileId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
+  async moveFile(fileId: string, newParentId: string | null): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
         .from("files")
-        .update({ deleted: false })
-        .eq("id", fileId);
+        .update({ parent_id: newParentId })
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'File moved successfully'
+    );
+  }
 
-      if (error) {
-        throw new Error(`Error restoring file: ${error.message}`);
-      }
+  async updateSharing(
+    fileId: string, 
+    isShared: boolean, 
+    sharedWith?: string[] | null
+  ): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update({ 
+          is_shared: isShared,
+          shared_with: sharedWith
+        })
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'Sharing settings updated successfully'
+    );
+  }
 
-      return true;
-    } catch (error) {
-      console.error("restoreFile:", error);
-      return false;
+  async getStorageUsage(): Promise<FileStorageUsage> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_storage_usage') as PostgrestSingleResponse<{
+        used_space: number;
+        total_space: number;
+        storage_breakdown: Record<string, number>;
+      }>;
+  
+      if (error) throw error;
+  
+      return {
+        used: data?.used_space || 0,
+        total: data?.total_space || 0,
+        breakdown: data?.storage_breakdown || {}
+      };
+    } catch (err) {
+      console.error("getStorageUsage:", err);
+      return { used: 0, total: 0, breakdown: {} };
     }
-  },
+  }
+}
 
-  // services/files/FileService.ts
-// Add these methods to your existing FileService
-  
-    /**
-     * Archive a file
-     */
-    async archiveFile(fileId: string): Promise<boolean> {
-      try {
-        const { error } = await supabase
-          .from("files")
-          .update({ 
-            status: 'archived',
-            archived_at: new Date().toISOString()
-          })
-          .eq("id", fileId);
-  
-        if (error) throw error;
-        return true;
-      } catch (error) {
-        console.error("archiveFile:", error);
-        return false;
-      }
-    },
-  
-    /**
-     * Get archived files with pagination
-     */
-    async getArchivedFiles(
-      page: number = 1,
-      limit: number = 10
-    ): Promise<{ files: FileRow[]; total: number }> {
-      try {
-        const start = (page - 1) * limit;
-        const end = start + limit - 1;
-  
-        const { data, error, count } = await supabase
-          .from("files")
-          .select("*", { count: "exact" })
-          .eq("status", "archived")
-          .order("archived_at", { ascending: false })
-          .range(start, end);
-  
-        if (error) throw error;
-  
-        return {
-          files: data || [],
-          total: count || 0
-        };
-      } catch (error) {
-        console.error("getArchivedFiles:", error);
-        return { files: [], total: 0 };
-      }
-    },
-  
-    /**
-     * Restore file from archive
-     */
-    async restoreFromArchive(fileId: string): Promise<boolean> {
-      try {
-        const { error } = await supabase
-          .from("files")
-          .update({ 
-            status: 'active',
-            archived_at: null 
-          })
-          .eq("id", fileId);
-  
-        if (error) throw error;
-        return true;
-      } catch (error) {
-        console.error("restoreFromArchive:", error);
-        return false;
-      }
-    },
-  
-    /**
-     * Get storage usage for archived files
-     */
-    async getArchivedStorageUsage(): Promise<FileStorageUsage> {
-        try {
-          const { data: files, error } = await supabase
-            .from("files")
-            .select("size, category")
-            .eq("status", "archived");
-    
-          if (error) throw error;
-    
-          const breakdown = (files || []).reduce<Record<string, number>>((acc, file) => {
-            const category = file.category || 'other';
-            acc[category] = (acc[category] || 0) + Number(file.size);
-            return acc;
-          }, {});
-    
-          const used = Object.values(breakdown).reduce((a: number, b: number) => a + b, 0);
-    
-          return {
-            used,
-            total: used * 2,
-            breakdown
-          };
-        } catch (error) {
-          console.error("getArchivedStorageUsage:", error);
-          return { used: 0, total: 0, breakdown: {} };
-        }
-      }
-    };
-
-
-  
+// Export the FileService class
+export default FileService;

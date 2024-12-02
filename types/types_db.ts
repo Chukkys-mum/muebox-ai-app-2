@@ -778,6 +778,14 @@ export interface Database {
           extension: string | null;
           created_at: string;
           updated_at: string;
+          size: number;
+          type: "file" | "folder";
+          status: string;
+          mime_type: string | null;
+          parent_id: string | null;
+          archived_at: string | null;
+          deleted_at: string | null;
+          metadata: Record<string, any> | null;
         };
         Insert: {
           id?: string;
@@ -791,6 +799,14 @@ export interface Database {
           extension?: string | null;
           created_at?: string;
           updated_at?: string;
+          size?: number;
+          type?: "file" | "folder";
+          status?: string;
+          mime_type?: string | null;
+          parent_id?: string | null;
+          archived_at?: string | null;
+          deleted_at?: string | null;
+          metadata?: Record<string, any> | null;
         };
         Update: {
           id?: string;
@@ -804,13 +820,59 @@ export interface Database {
           extension?: string | null;
           created_at?: string;
           updated_at?: string;
+          size?: number;
+          type?: "file" | "folder";
+          status?: string;
+          mime_type?: string | null;
+          parent_id?: string | null;
+          archived_at?: string | null;
+          deleted_at?: string | null;
+          metadata?: Record<string, any> | null;
         };
         Relationships: [
           {
-            foreignKeyName: 'files_uploaded_by_fkey';
-            columns: ['uploaded_by'];
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
+            foreignKeyName: "files_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      archives: {
+        Row: {
+          id: string;
+          file_id: string;
+          user_id: string;
+          archived_at: string;
+          restored_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          file_id: string;
+          user_id: string;
+          archived_at: string;
+          restored_at?: string | null;
+        };
+        Update: {
+          file_id?: string;
+          user_id?: string;
+          archived_at?: string;
+          restored_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "archives_file_id_fkey";
+            columns: ["file_id"];
+            referencedRelation: "files";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "archives_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           }
         ];
       };
@@ -883,31 +945,38 @@ export interface Database {
           id: string;
           name: string | null;
           size: number | null;
+          description: string | null;
+          tags: string[] | null;
+          type: string | null;
+          status: string;
           user_id: string;
           deleted_at: string;
+          created_at: string;
+          modified_at: string;
         };
         Insert: {
           id?: string;
           name?: string | null;
           size?: number | null;
+          description?: string | null;
+          tags?: string[] | null;
+          type?: string | null;
+          status?: string;
           user_id: string;
           deleted_at?: string;
+          created_at?: string;
+          modified_at?: string;
         };
         Update: {
-          id?: string;
           name?: string | null;
           size?: number | null;
-          user_id?: string;
+          description?: string | null;
+          tags?: string[] | null;
+          type?: string | null;
+          status?: string;
           deleted_at?: string;
+          modified_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'trash_user_id_fkey';
-            columns: ['user_id'];
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          }
-        ];
       };
 
       email_accounts: {
@@ -1306,6 +1375,84 @@ export interface Database {
             referencedColumns: ['id'];
           }
         ];
+      };
+
+      llm_configurations: {
+        Row: {
+          id: string;
+          name: string;
+          provider: string;
+          api_endpoint: string;
+          capabilities: string[];
+          max_tokens: number;
+          default_params: Json;
+          platform_api_key?: string;
+          is_enabled: boolean;
+          cost: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            currency: string;
+          };
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          provider: string;
+          api_endpoint: string;
+          capabilities: string[];
+          max_tokens: number;
+          default_params: Json;
+          platform_api_key?: string;
+          is_enabled?: boolean;
+          cost: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            currency: string;
+          };
+        };
+        Update: {
+          name?: string;
+          provider?: string;
+          api_endpoint?: string;
+          capabilities?: string[];
+          max_tokens?: number;
+          default_params?: Json;
+          platform_api_key?: string;
+          is_enabled?: boolean;
+          cost?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            currency: string;
+          };
+        };
+        Relationships: [];
+      };
+      
+      user_api_keys: {
+        Row: {
+          id: string;
+          llm_id: string;
+          user_id: string;
+          api_key: string;
+          is_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          llm_id: string;
+          user_id: string;
+          api_key: string;
+          is_enabled?: boolean;
+        };
+        Update: {
+          llm_id?: string;
+          user_id?: string;
+          api_key?: string;
+          is_enabled?: boolean;
+        };
       };
 
       accounts: {
@@ -1936,18 +2083,137 @@ export interface Database {
         };
       };
 
+      classification_rules: {
+        Row: {
+          id: string;
+          category: string;
+          patterns: string[];
+          keywords: string[];
+          weight: number;
+          llm_mapping: string[];
+          min_confidence: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          category: string;
+          patterns: string[];
+          keywords: string[];
+          weight: number;
+          llm_mapping: string[];
+          min_confidence: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string;
+          patterns?: string[];
+          keywords?: string[];
+          weight?: number;
+          llm_mapping?: string[];
+          min_confidence?: number;
+          updated_at?: string;
+        };
+      };
+      
+      routing_history: {
+        Row: {
+          id: string;
+          request_id: string;
+          llm_used: string;
+          token_usage: Json;
+          costs: Json;
+          timing: Json;
+          metadata: Json;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_id: string;
+          llm_used: string;
+          token_usage: Json;
+          costs: Json;
+          timing: Json;
+          metadata?: Json;
+          status?: string;
+          created_at?: string;
+        };
+        Update: {
+          request_id?: string;
+          llm_used?: string;
+          token_usage?: Json;
+          costs?: Json;
+          timing?: Json;
+          metadata?: Json;
+          status?: string;
+        };
+      };
+      
+      routing_errors: {
+        Row: {
+          id: string;
+          error_code: string;
+          error_message: string;
+          llm_id?: string;
+          context?: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          error_code: string;
+          error_message: string;
+          llm_id?: string;
+          context?: Json;
+          created_at?: string;
+        };
+        Update: {
+          error_code?: string;
+          error_message?: string;
+          llm_id?: string;
+          context?: Json;
+        };
+      };
+
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_archive_storage_usage: {
+        Args: Record<string, never>;
+        Returns: {
+          used_space: number;
+          total_space: number;
+          storage_breakdown: {
+            images: number;
+            videos: number;
+            documents: number;
+            others: number;
+          };
+        };
+      };
+  
+      // Adding `get_trash_storage_usage`
+      get_trash_storage_usage: {
+        Args: Record<string, never>;
+        Returns: {
+          used_space: number;
+          total_space: number;
+          storage_breakdown: {
+            images: number;
+            videos: number;
+            documents: number;
+            others: number;
+          };
+        };
+      };
     };
     Enums: {
       pricing_plan_interval: 'day' | 'week' | 'month' | 'year';
       pricing_type: 'one_time' | 'recurring';
       subscription_status: 'trialing' | 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'unpaid' | 'paused';
-      // New Enums
       audio_status: 'pending' | 'processing' | 'completed' | 'failed';
       knowledge_base_type: 'public' | 'private' | 'safeguard';
       chat_type: 'direct' | 'group' | 'ai';
@@ -1959,8 +2225,7 @@ export interface Database {
       [_ in never]: never;
     };
   };
-}
-
+  
 export interface DatabaseTTS {
   public: {
     Tables: {

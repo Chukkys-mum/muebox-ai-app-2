@@ -78,21 +78,21 @@ import {
     }
   
     private async validateConfiguration(template: Template, errors: string[]): Promise<void> {
-      const { configuration } = template;
-  
-      // Validate input schema
-      if (!configuration.inputSchema) {
-        errors.push('Input schema is required');
-      } else {
-        try {
-          const schemaValidation = validateJsonSchema({}, configuration.inputSchema);
-          if (!schemaValidation) {
-            errors.push('Invalid input schema format');
+        const { configuration } = template;
+      
+        // Validate input schema
+        if (!configuration.inputSchema) {
+          errors.push('Input schema is required');
+        } else {
+          try {
+            const schemaValidation = validateJsonSchema({}, configuration.inputSchema);
+            if (!schemaValidation) {
+              errors.push('Invalid input schema format');
+            }
+          } catch (err: any) {  // Type error as any for error handling
+            errors.push('Error validating input schema: ' + (err.message || 'Unknown error'));
           }
-        } catch (error) {
-          errors.push('Error validating input schema: ' + error.message);
         }
-      }
   
       // Validate output format
       this.validateOutputFormat(configuration.outputFormat, errors);
@@ -146,12 +146,11 @@ import {
           if (!schemaValidation) {
             errors.push('Invalid output schema format');
           }
-        } catch (error) {
-          errors.push('Error validating output schema: ' + error.message);
+        } catch (err: any) {  // Type error as any for error handling
+          errors.push('Error validating output schema: ' + (err.message || 'Unknown error'));
         }
       }
     }
-  
     private validateModelParams(params: LLMModelParams, errors: string[]): void {
       if (params.temperature < 0 || params.temperature > 1) {
         errors.push('Temperature must be between 0 and 1');

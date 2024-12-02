@@ -1,16 +1,15 @@
 // /services/llm/PromptClassifier.ts
 // Prompt Classification implementation
 
-// NEW FILE: /services/llm/PromptClassifier.ts
-
-import { 
+  import { 
     PromptClassifierInterface, 
-    PromptAnalysis, 
+    PromptAnalysis,
     ClassificationRule,
-    PromptCategory 
-  } from '@/types/llm/classifier';
+    PromptCategory  // Added this
+  } from '@/types/llm/classifier'; 
   import { Scope } from '@/types/llm/scope';
   import { createClient } from '@/utils/supabase/server';
+  import { adaptClassificationRule, adaptClassificationRuleForDB } from '@/utils/llm/adapters';
   
   export class PromptClassifier implements PromptClassifierInterface {
     private rules: Map<string, ClassificationRule>;
@@ -33,7 +32,7 @@ import {
         if (error) throw error;
   
         rules?.forEach(rule => {
-          this.rules.set(rule.id, rule);
+          this.rules.set(rule.id, adaptClassificationRule(rule));
         });
   
         await this.updateScoringMatrix();
@@ -103,9 +102,18 @@ import {
       const confidence = totalScore > 0 ? primaryScore / totalScore : 0.5;
   
       // Get suggested LLMs
+      // Get minimum confidence threshold from rules
+      const minConfidenceThreshold = Math.min(
+        ...Array.from(this.rules.values())
+        .map(rule => rule.minConfidence),
+        0.5 // Default fallback if no rules exist
+      );
+    
+      // Get suggested LLMs and normalize scores
+      const maxScore = Math.max(...Array.from(llmScores.values()), 1); // Prevent division by zero
       const suggestedLLMs = Array.from(llmScores.entries())
         .sort((a, b) => b[1] - a[1])
-        .filter(([_, score]) => score >= (rule => rule.minConfidence))
+        .filter(([_, score]) => (score / maxScore) >= minConfidenceThreshold)
         .map(([llmId]) => llmId);
   
       // Analyze features
@@ -145,7 +153,7 @@ import {
       try {
         const { error } = await this.supabase
           .from('classification_rules')
-          .insert([rule]);
+          .insert([adaptClassificationRuleForDB(rule)]);
   
         if (error) throw error;
   
@@ -157,42 +165,51 @@ import {
       }
     }
   
-    public async removeRule(ruleId: string): Promise<void> {
-      try {
-        const { error } = await this.supabase
-          .from('classification_rules')
-          .delete()
-          .eq('id', ruleId);
-  
-        if (error) throw error;
-  
-        this.rules.delete(ruleId);
-        await this.updateScoringMatrix();
-      } catch (error) {
-        console.error('Failed to remove classification rule:', error);
-        throw error;
-      }
-    }
-  
     public async updateRule(ruleId: string, updates: Partial<ClassificationRule>): Promise<void> {
-      try {
-        const { error } = await this.supabase
-          .from('classification_rules')
-          .update(updates)
-          .eq('id', ruleId);
-  
-        if (error) throw error;
-  
-        const existingRule = this.rules.get(ruleId);
-        if (existingRule) {
-          this.rules.set(ruleId, { ...existingRule, ...updates });
+        try {
+          const existingRule = this.rules.get(ruleId);
+          if (!existingRule) {
+            throw new Error(`Rule not found: ${ruleId}`);
+          }
+      
+          // Create complete rule by merging existing with updates
+          const updatedRule: ClassificationRule = {
+            ...existingRule,
+            ...updates,
+            id: ruleId // Ensure ID is preserved
+          };
+      
+          const { error } = await this.supabase
+            .from('classification_rules')
+            .update(adaptClassificationRuleForDB(updatedRule))
+            .eq('id', ruleId);
+      
+          if (error) throw error;
+      
+          this.rules.set(ruleId, updatedRule);
+          await this.updateScoringMatrix();
+        } catch (error) {
+          console.error('Failed to update classification rule:', error);
+          throw error;
         }
-        await this.updateScoringMatrix();
-      } catch (error) {
-        console.error('Failed to update classification rule:', error);
-        throw error;
       }
-    }
+
+      public async removeRule(ruleId: string): Promise<void> {
+        try {
+          const { error } = await this.supabase
+            .from('classification_rules')
+            .delete()
+            .eq('id', ruleId);
+      
+          if (error) throw error;
+      
+          this.rules.delete(ruleId);
+          await this.updateScoringMatrix();
+        } catch (error) {
+          console.error('Failed to remove classification rule:', error);
+          throw error;
+        }
+      }
   
     public getScoringMatrix(): Record<string, number> {
       return { ...this.scoringMatrix };

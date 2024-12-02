@@ -8,15 +8,14 @@ export class AnthropicProvider implements LLMProvider {
   name = 'Anthropic Claude';
   description = 'Advanced AI models with strong reasoning capabilities';
   capabilities = ['text', 'code', 'analysis', 'chat'];
-  
   private client: Anthropic | null = null;
-  
+
   async initialize(config: { apiKey: string }) {
     this.client = new Anthropic({
       apiKey: config.apiKey
     });
   }
-  
+
   async validate(apiKey: string): Promise<boolean> {
     try {
       const tempClient = new Anthropic({ apiKey });
@@ -30,10 +29,9 @@ export class AnthropicProvider implements LLMProvider {
       return false;
     }
   }
-  
+
   async complete(prompt: string, params: any): Promise<string> {
     if (!this.client) throw new Error('Provider not initialized');
-    
     const response = await this.client.messages.create({
       model: params.model || 'claude-3-opus-20240229',
       max_tokens: params.maxTokens || 1024,
@@ -41,12 +39,12 @@ export class AnthropicProvider implements LLMProvider {
       messages: [{ role: 'user', content: prompt }]
     });
     
-    return response.content[0].text;
+    const textContent = response.content[0];
+    return textContent?.type === 'text' ? textContent.text : '';
   }
 
-  async stream(prompt: string, params: any): AsyncGenerator<string> {
+  async *stream(prompt: string, params: any): AsyncGenerator<string, any, any> {
     if (!this.client) throw new Error('Provider not initialized');
-    
     const stream = await this.client.messages.create({
       model: params.model || 'claude-3-opus-20240229',
       max_tokens: params.maxTokens || 1024,
@@ -55,14 +53,13 @@ export class AnthropicProvider implements LLMProvider {
       stream: true
     });
 
-    const generator = async function* () {
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta') {
-          yield chunk.delta.text;
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta') {
+        const delta = chunk.delta;
+        if (delta.type === 'text_delta') {
+          yield delta.text;
         }
       }
-    };
-
-    return generator();
+    }
   }
 }

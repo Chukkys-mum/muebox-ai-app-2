@@ -1,7 +1,10 @@
+// /app/layout.tsx
+
 import '@/styles/globals.css';
 import { PropsWithChildren } from 'react';
 import SupabaseProvider from './supabase-provider';
 import { ThemeProvider } from './theme-provider';
+import { Toaster } from "@/components/ui/toaster"
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +78,7 @@ export default function RootLayout({
           <SupabaseProvider>
             {/* @ts-ignore */}
             <main id="skip">{children}</main>
+            <Toaster />
           </SupabaseProvider>
         </ThemeProvider>
       </body>

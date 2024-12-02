@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+   "baseUrl": ".",
    "target": "ES2020", 
    "lib": [
     "dom",
@@ -19,9 +20,9 @@
    "jsx": "preserve",
    "incremental": true,
    "paths": {
-    "@/*": [
-     "./*"
-    ]
+      "@/*": ["./*"], // General alias
+      "@/supabase/*": ["utils/supabase/*"], // Specific alias for Supabase
+      "@/types/*": ["types/*"] // Specific alias for custom types
    },
    "plugins": [
     {

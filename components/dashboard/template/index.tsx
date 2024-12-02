@@ -139,7 +139,7 @@ export default function TemplateManagement(props: Props) {
               </DialogDescription>
             </DialogHeader>
             <TemplateEditor
-              initialTemplate={selectedTemplate}
+              initialTemplate={selectedTemplate || undefined}
               onSave={handleSave}
               onCancel={() => setShowEditor(false)}
             />

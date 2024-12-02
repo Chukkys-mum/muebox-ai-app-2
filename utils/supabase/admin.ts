@@ -218,6 +218,7 @@ const copyBillingDetailsToCustomer = async (
     throw new Error(`Customer update failed: ${updateError.message}`);
 };
 
+
 const manageSubscriptionStatusChange = async (
   subscriptionId: string,
   customerId: string,
@@ -241,16 +242,17 @@ const manageSubscriptionStatusChange = async (
   const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
     expand: ['default_payment_method']
   });
-  // Upsert the latest status of the subscription object.
+
+  // Get quantity from subscription items
+  const quantity = subscription.items.data[0]?.quantity || null;
+  
   const subscriptionData: TablesInsert<'subscriptions'> = {
     id: subscription.id,
-    user_id: uuid,
+    account_id: uuid,
     metadata: subscription.metadata,
     status: subscription.status,
     price_id: subscription.items.data[0].price.id,
-    //TODO check quantity on subscription
-    // @ts-ignore
-    quantity: subscription.quantity,
+    quantity,  // Using the extracted quantity
     cancel_at_period_end: subscription.cancel_at_period_end,
     cancel_at: subscription.cancel_at
       ? toDateTime(subscription.cancel_at).toISOString()
@@ -279,18 +281,16 @@ const manageSubscriptionStatusChange = async (
   const { error: upsertError } = await supabaseAdmin
     .from('subscriptions')
     .upsert([subscriptionData]);
+
   if (upsertError)
     throw new Error(
       `Subscription insert/update failed: ${upsertError.message}`
     );
   console.log(
-    `Inserted/updated subscription [${subscription.id}] for user [${uuid}]`
+    `Inserted/updated subscription [${subscription.id}] for account [${uuid}]`
   );
 
-  // For a new subscription copy the billing details to the customer object.
-  // NOTE: This is a costly operation and should happen at the very end.
   if (createAction && subscription.default_payment_method && uuid)
-    //@ts-ignore
     await copyBillingDetailsToCustomer(
       uuid,
       subscription.default_payment_method as Stripe.PaymentMethod

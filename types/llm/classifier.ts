@@ -42,8 +42,8 @@ export interface ClassificationRule {
 export interface PromptClassifierInterface {
   analyzePrompt(prompt: string, scope?: Scope): Promise<PromptAnalysis>;
   matchLLMs(analysis: PromptAnalysis): string[];
-  addRule(rule: ClassificationRule): void;
-  removeRule(ruleId: string): void;
-  updateRule(ruleId: string, updates: Partial<ClassificationRule>): void;
+  addRule(rule: ClassificationRule): Promise<void>;
+  removeRule(ruleId: string): Promise<void>;
+  updateRule(ruleId: string, updates: Partial<ClassificationRule>): Promise<void>;
   getScoringMatrix(): Record<string, number>;
 }

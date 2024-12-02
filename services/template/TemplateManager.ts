@@ -3,6 +3,7 @@
 // /services/template/TemplateManager.ts
 
 import { createClient } from '@/utils/supabase/server';
+import type { Database } from '@/types/types_db';
 import { 
   Template, 
   TemplateManagerInterface, 
@@ -12,6 +13,14 @@ import {
 } from '@/types/template/types';
 import { v4 as uuidv4 } from 'uuid';
 import { JSONSchema7, validate as validateSchema } from 'json-schema';
+
+// Define Json type from Database type
+type DbJson = string | number | boolean | null | { [key: string]: DbJson } | DbJson[];
+
+const getUserId = () => {
+    // Implement your user ID retrieval logic here
+    return 'current-user-id'; // Replace with actual implementation
+  };
 
 export class TemplateManager implements TemplateManagerInterface {
   private supabase;
@@ -45,14 +54,24 @@ export class TemplateManager implements TemplateManagerInterface {
 
       // Store in database
       const { data, error } = await this.supabase
-        .from('templates')
-        .insert([{
-          ...newTemplate,
-          configuration: JSON.stringify(newTemplate.configuration),
-          metadata: JSON.stringify(newTemplate.metadata)
-        }])
-        .select()
-        .single();
+      .from('templates')
+      .insert([{
+        id: newTemplate.id,
+        name: newTemplate.name,
+        description: newTemplate.description,
+        category: newTemplate.category,
+        configuration: JSON.stringify(newTemplate.configuration),
+        metadata: JSON.stringify(newTemplate.metadata),
+        prompts: JSON.stringify(newTemplate.prompts),
+        validation: JSON.stringify(newTemplate.validation),
+        user_id: getUserId(),
+        version: newTemplate.version,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        archived: false
+      }])
+      .select()
+      .single();
 
       if (error) throw error;
 
@@ -252,16 +271,28 @@ export class TemplateManager implements TemplateManagerInterface {
     }
   }
 
+  private mapDbToTemplateUsage(data: Database['public']['Tables']['template_usage']['Row']): TemplateUsage {
+    return {
+      id: data.id,
+      templateId: data.template_id,
+      userId: data.user_id,
+      timestamp: new Date(data.timestamp),
+      inputs: data.inputs as Record<string, any>,
+      result: data.result as any,
+      metrics: data.metrics as any
+    };
+  }
+
   public async getTemplateUsage(id: string): Promise<TemplateUsage[]> {
     try {
       const { data, error } = await this.supabase
         .from('template_usage')
         .select('*')
-        .eq('templateId', id)
+        .eq('template_id', id)
         .order('timestamp', { ascending: false });
-
+  
       if (error) throw error;
-      return data;
+      return data.map(this.mapDbToTemplateUsage);
     } catch (error) {
       console.error('Failed to get template usage:', error);
       return [];
@@ -278,17 +309,39 @@ export class TemplateManager implements TemplateManagerInterface {
     return `${major}.${minor}.${patch + 1}`;
   }
 
+  
+private mapTemplateToDb(template: Template): Database['public']['Tables']['templates']['Insert'] {
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      metadata: template.metadata as Json,
+      configuration: template.configuration as Json,
+      prompts: template.prompts as Json,
+      validation: template.validation as Json,
+      version: template.version,
+      user_id: getUserId(), // You need to implement this to get the current user ID
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      archived: false
+    };
+  }
+
   private async createVersionRecord(template: Template): Promise<void> {
     try {
+      const versionRecord = {
+        template_id: template.id,
+        version: template.version,
+        changes: [] as Json, // Add your changes tracking logic
+        template_data: template as Json,
+        created_at: new Date().toISOString(),
+        created_by: template.metadata.author
+      };
+  
       await this.supabase
         .from('template_versions')
-        .insert([{
-          templateId: template.id,
-          version: template.version,
-          template: template,
-          createdAt: new Date(),
-          createdBy: template.metadata.author
-        }]);
+        .insert([versionRecord]);
     } catch (error) {
       console.error('Failed to create version record:', error);
     }
@@ -301,9 +354,9 @@ export class TemplateManager implements TemplateManagerInterface {
       .eq('templateId', templateId)
       .eq('version', version)
       .single();
-
+  
     if (error || !data) return null;
-    return data;
+    return this.parseTemplateFromDB(data.template_data as any);
   }
 
   private parseTemplateFromDB(data: any): Template {

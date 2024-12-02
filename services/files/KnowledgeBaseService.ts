@@ -1,166 +1,229 @@
-// /files/KnowledgeBaseService.ts
+// services/files/KnowledgeBaseService.ts
 
-import { supabase } from "@/supabase/supabaseClient";
-import { FileRow } from "@/types/FileTypes";
+// services/files/KnowledgeBaseService.ts
 
-export const KnowledgeBaseService = {
-  /**
-   * Fetch all files in the Knowledge Base ordered by most recently updated.
-   * @returns {Promise<FileRow[]>} A list of Knowledge Base files or an empty array on error.
-   */
-  async getKnowledgeBaseFiles(): Promise<FileRow[]> {
+import { FileService } from './FileService';
+import { KnowledgeBaseFile, FileOperationResult, FileStorageUsage, SafeguardFolder } from '@/types/FileTypes';
+import { PostgrestSingleResponse } from '@supabase/supabase-js';
+
+export class KnowledgeBaseService extends FileService {
+  async getKnowledgeBases(): Promise<KnowledgeBaseFile[]> {
     try {
-      const { data, error } = await supabase
-        .from("knowledge_base")
-        .select("*")
-        .order("updated_at", { ascending: false });
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('type', 'knowledge_base')
+        .eq('status', 'active');
 
-      if (error) {
-        throw new Error(`Error fetching Knowledge Base files: ${error.message}`);
-      }
-
-      return data || [];
+      if (error) throw error;
+      return data?.map(kb => this.transformDatabaseFile(kb) as KnowledgeBaseFile) || [];
     } catch (err) {
-      console.error(err);
+      console.error('getKnowledgeBases:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Fetch storage usage for the Knowledge Base.
-   * @returns {Promise<{ used: number; total: number }>} Storage usage data or default values on error.
-   */
-  async getStorageUsage(): Promise<{ used: number; total: number }> {
+  async getStorageUsage(): Promise<FileStorageUsage> {
     try {
-      const { data, error } = await supabase.rpc("get_knowledge_base_storage");
+      const { data, error } = await this.supabase.rpc('get_knowledge_base_storage') as PostgrestSingleResponse<{
+        used: number;
+        total: number;
+      }>;
 
-      if (error) {
-        throw new Error(
-          `Error fetching Knowledge Base storage usage: ${error.message}`
-        );
-      }
+      if (error) throw error;
 
-      return data || { used: 0, total: 0 };
+      return {
+        used: data.used,
+        total: data.total,
+        breakdown: {} // Add an empty breakdown object to match FileStorageUsage type
+      };
     } catch (err) {
-      console.error(err);
-      return { used: 0, total: 0 };
+      console.error("getKnowledgeBaseStorageUsage:", err);
+      return { used: 0, total: 0, breakdown: {} };
     }
-  },
+  }
 
-  /**
-   * Add a file to the Knowledge Base.
-   * @param {Omit<FileRow, "created_at" | "modified_at">} file - The file object to add to the Knowledge Base.
-   * @returns {Promise<boolean>} True if successful, false otherwise.
-   */
-  async addFile(
-    file: Omit<FileRow, "created_at" | "modified_at">
-  ): Promise<boolean> {
+  async createKnowledgeBase(knowledgeBase: Partial<KnowledgeBaseFile>): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from('files')
+        .insert([this.transformToDatabase(knowledgeBase)])
+        .select()
+        .single(),
+      'Knowledge base created successfully'
+    );
+  }
+
+  async updateKnowledgeBase(id: string, updates: Partial<KnowledgeBaseFile>): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from('files')
+        .update(this.transformToDatabase(updates))
+        .eq('id', id)
+        .select()
+        .single(),
+      'Knowledge base updated successfully'
+    );
+  }
+
+  async deleteKnowledgeBase(id: string): Promise<FileOperationResult> {
+    return this.deleteFile(id);
+  }
+
+  async getKnowledgeBaseById(id: string): Promise<KnowledgeBaseFile | null> {
     try {
-      const { error } = await supabase.from("knowledge_base").insert([file]);
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('id', id)
+        .eq('type', 'knowledge_base')
+        .single();
 
-      if (error) {
-        throw new Error(`Error adding file to Knowledge Base: ${error.message}`);
-      }
-
-      return true;
+      if (error) throw error;
+      return data ? this.transformDatabaseFile(data) as KnowledgeBaseFile : null;
     } catch (err) {
-      console.error(err);
-      return false;
+      console.error('getKnowledgeBaseById:', err);
+      return null;
     }
-  },
+  }
 
-  /**
-   * Remove a file from the Knowledge Base.
-   * @param {string} fileId - The ID of the file to remove.
-   * @returns {Promise<boolean>} True if successful, false otherwise.
-   */
-  async removeFile(fileId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from("knowledge_base")
-        .delete()
-        .eq("id", fileId);
+  async updateSafeguardRules(id: string, rules: SafeguardFolder['safeguardRules']): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from('files')
+        .update({ metadata: { safeguardRules: rules } })
+        .eq('id', id)
+        .select()
+        .single(),
+      'Safeguard rules updated successfully'
+    );
+  }
 
-      if (error) {
-        throw new Error(
-          `Error removing file from Knowledge Base: ${error.message}`
-        );
-      }
+  async addFile(file: Omit<FileRow, "created_at" | "modified_at">): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      () => this.supabase.from("knowledge_base").insert([file]).select().single(),
+      'File added to Knowledge Base successfully'
+    );
+  }
 
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  },
+  async removeFile(fileId: string): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      () => this.supabase.from("knowledge_base").delete().eq("id", fileId).select().single(),
+      'File removed from Knowledge Base successfully'
+    );
+  }
 
-  /**
-   * Search for files in the Knowledge Base by name.
-   * @param {string} query - Search term to filter files by name.
-   * @returns {Promise<FileRow[]>} Array of matching files or an empty array on error.
-   */
   async searchFiles(query: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from("knowledge_base")
         .select("*")
-        .ilike("name", `%${query}%`); // Case-insensitive partial match.
+        .ilike("name", `%${query}%`);
 
-      if (error) {
-        throw new Error(`Error searching files in Knowledge Base: ${error.message}`);
-      }
-
-      return data || [];
+      if (error) throw error;
+      return data ? data.map(this.transformDatabaseFile) : [];
     } catch (err) {
-      console.error(err);
+      console.error('searchFiles:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Fetch files by category.
-   * @param category - The category of files to fetch (e.g., image, video).
-   * @returns {Promise<FileRow[]>} Array of files in the category or an empty array on error.
-   */
-  async getFilesByCategory(category: FileRow["category"]): Promise<FileRow[]> {
+  async getFilesByCategory(category: FileCategory): Promise<FileRow[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from("knowledge_base")
         .select("*")
         .eq("category", category);
 
-      if (error) {
-        throw new Error(`Error fetching files by category: ${error.message}`);
-      }
-
-      return data || [];
+      if (error) throw error;
+      return data ? data.map(this.transformDatabaseFile) : [];
     } catch (err) {
-      console.error(err);
+      console.error('getFilesByCategory:', err);
       return [];
     }
-  },
+  }
 
-  /**
-   * Update an existing file in the Knowledge Base.
-   * @param fileId - The ID of the file to update.
-   * @param updates - Object containing the fields to update.
-   * @returns {Promise<boolean>} True if the update is successful, false otherwise.
-   */
-  async updateFile(fileId: string, updates: Partial<FileRow>): Promise<boolean> {
-    try {
-      const { error } = await supabase
+  async updateFile(fileId: string, updates: Partial<FileRow>): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      () => this.supabase.from("knowledge_base").update(updates).eq("id", fileId).select().single(),
+      'File updated in Knowledge Base successfully'
+    );
+  }
+
+  // Archive functionality
+  async archiveKnowledgeBaseFile(fileId: string): Promise<FileOperationResult> {
+    const result = await ArchiveService.archiveFile(fileId);
+    if (result.success) {
+      // Perform any additional knowledge base specific operations
+      // For example, update the status in the knowledge_base table
+      await this.supabase
         .from("knowledge_base")
-        .update(updates)
+        .update({ status: 'archived' })
         .eq("id", fileId);
-
-      if (error) {
-        throw new Error(`Error updating file: ${error.message}`);
-      }
-
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
     }
-  },
-};
+    return result;
+  }
+
+  async restoreKnowledgeBaseFile(fileId: string): Promise<FileOperationResult> {
+    const result = await ArchiveService.restoreFile(fileId);
+    if (result.success) {
+      // Perform any additional knowledge base specific operations
+      // For example, update the status in the knowledge_base table
+      await this.supabase
+        .from("knowledge_base")
+        .update({ status: 'active' })
+        .eq("id", fileId);
+    }
+    return result;
+  }
+
+  async bulkArchiveKnowledgeBaseFiles(fileIds: string[]): Promise<FileOperationResult> {
+    const result = await ArchiveService.bulkArchiveFiles(fileIds);
+    if (result.success) {
+      // Perform any additional knowledge base specific operations
+      await this.supabase
+        .from("knowledge_base")
+        .update({ status: 'archived' })
+        .in("id", fileIds);
+    }
+    return result;
+  }
+
+  async bulkRestoreKnowledgeBaseFiles(fileIds: string[]): Promise<FileOperationResult> {
+    const result = await ArchiveService.bulkRestoreFiles(fileIds);
+    if (result.success) {
+      // Perform any additional knowledge base specific operations
+      await this.supabase
+        .from("knowledge_base")
+        .update({ status: 'active' })
+        .in("id", fileIds);
+    }
+    return result;
+  }
+
+  async getArchivedKnowledgeBaseFiles(page: number = 1, limit: number = 10): Promise<{ files: FileRow[]; total: number }> {
+    try {
+      const start = (page - 1) * limit;
+      const end = start + limit - 1;
+
+      const { data, error, count } = await this.supabase
+        .from("knowledge_base")
+        .select('*', { count: 'exact' })
+        .eq('status', 'archived')
+        .order('archived_at', { ascending: false })
+        .range(start, end);
+
+      if (error) throw error;
+
+      return {
+        files: data ? data.map(this.transformDatabaseFile) : [],
+        total: count || 0
+      };
+    } catch (err) {
+      console.error('getArchivedKnowledgeBaseFiles:', err);
+      return { files: [], total: 0 };
+    }
+  }
+}
+
+export default new KnowledgeBaseService();

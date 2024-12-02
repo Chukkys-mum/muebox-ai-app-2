@@ -1,55 +1,90 @@
-// types/FileTypes.ts
+// /types/FileTypes.ts
+
+export type FileStatus = 'active' | 'archived' | 'deleted' | 'trashed';
+export type FileCategory = 'image' | 'video' | 'audio' | 'document' | 'code' | 'archive' | 'other';
+export type FilePermission = 'read' | 'write' | 'delete';
+
+export interface FilePermissions {
+  read: boolean;
+  write: boolean;
+  delete: boolean;
+}
+
+export interface FileRow {
+  // Core properties
+  id: string;
+  file_name: string; // Changed from 'name' to match database schema
+  size: number;
+  type: 'file' | 'folder';
+  status: FileStatus;
+  
+  // File-specific properties
+  category: FileCategory | null; // Made nullable to match database schema
+  extension: string | null; // Made nullable to match database schema
+  mime_type: string | null; // Changed from 'mimeType' to match database schema
+
+  related_entity_type: string | null; // Made nullable to match database schema
+  related_entity_id: string | null; // Made nullable to match database schema
+  file_path: string | null; // Made nullable to match database schema
+  uploaded_by: string;
+  
+  // Organization
+  parent_id: string | null; // Made nullable to match database schema
+  is_pinned: boolean | null; // Made nullable to match database schema
+  starred: boolean | null; // Made nullable to match database schema
+  tags: string[] | null; // Made nullable to match database schema
+  description: string | null; // Made nullable to match database schema
+  
+  // Timestamps
+  created_at: string;
+  updated_at: string; // Changed from 'modified_at' to match database schema
+  deleted_at: string | null; // Made nullable to match database schema
+  archived_at: string | null; // Made nullable to match database schema
+  
+  // Sharing and permissions
+  is_shared: boolean | null; // Made nullable to match database schema
+  shared_with: string[] | null; // Made nullable to match database schema
+  permissions: Record<string, boolean> | null; // Changed to match database schema
+  user_id: string; // Owner of the file
+  
+  // Optional metadata
+  metadata: Record<string, any> | null; // Changed to match database schema
+}
 
 /**
- * Represents a generic file or folder entity.
+ * Represents a specialized entity for knowledge base content.
  */
-export interface FileRow {
-    id: string; // Unique identifier for the file or folder
-    name: string; // Name of the file or folder
-    size: string | number; // Size in bytes (files only) or number (for knowledge base cumulative size)
-    type: "file" | "folder"; // Indicates whether it's a file or a folder
-    category?:
-      | "image"
-      | "video"
-      | "audio"
-      | "document"
-      | "code"
-      | "archive"
-      | "other"; // Category for files
-    extension?: string; // Optional file extension (e.g., .jpg, .pdf)
-    mimeType?: string; // MIME type for files (e.g., image/jpeg)
-    parent_id?: string; // Optional ID of the parent folder (for nested structures)
-    modified_at: string; // Last modification timestamp
-    created_at: string; // Creation timestamp
-    is_pinned?: boolean; // Indicates whether the file or folder is pinned
-    tags?: string[]; // Tags for categorizing or searching files
-    description?: string; // Optional description or notes about the file or folder
-    is_shared?: boolean; // Indicates whether the file is shared
-    shared_with?: string[]; // List of user IDs or emails with whom the file is shared
-    permissions?: {
-      read: boolean; // Read access
-      write: boolean; // Write access
-      delete: boolean; // Delete access
-    }; // Access permissions for the file or folder
-    deleted?: boolean; // Indicates whether the file or folder is in the trash
-    starred?: boolean; // Indicates if the file or folder is marked as a favorite
-    status: 'active' | 'archived' | 'deleted' | 'trashed';
-    archived_at?: string;
-  }
-  
-  /**
-   * Represents a specialized entity for knowledge base content.
-   */
-  export interface KnowledgeBaseFile extends FileRow {
-    size: number; // Knowledge base items may have a cumulative size or 0 for folders
-    updated_at: string; // Last updated timestamp
-    is_pinned?: boolean; // Indicates whether the knowledge base item is pinned
-    description?: string; // Optional detailed description for knowledge base items
-  }
-  
-  /**
-   * Props for tables displaying files or folders.
-   */
+export interface KnowledgeBaseFile extends Omit<FileRow, 'size' | 'updated_at' | 'is_pinned' | 'description'> {
+  size: number; // Knowledge base items may have a cumulative size or 0 for folders
+  updated_at: string; // Last updated timestamp
+  is_pinned?: boolean; // Indicates whether the knowledge base item is pinned
+  description?: string; // Optional detailed description for knowledge base items
+}
+
+export interface FileListResponse {
+  files: FileRow[];
+  total: number;
+  cursor?: string;
+}
+
+export interface FileStorageUsage {
+  used: number;
+  total: number;
+  breakdown: Record<string, number>;
+}
+
+export interface FileSettings {
+  maxFileSize: number | null;
+  allowedFileTypes: string[] | null;
+}
+
+export interface FileOperationResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  file?: FileRow;
+  files?: FileRow[];  // Add this for bulk operations
+}
   export interface FileTableProps {
     data: FileRow[]; // Array of files or folders to be displayed
     onDelete: (ids: string[]) => Promise<void>; // Function to handle file deletion
@@ -128,3 +163,10 @@ export interface FileRow {
     dataRetentionPolicy?: string; // Optional policy for data retention
   }
   
+
+export interface TrashcanTableProps {
+  data: FileRow[];
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
+  isLoading: boolean;
+}

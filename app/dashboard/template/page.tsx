@@ -1,6 +1,6 @@
 // /app/dashboard/template/page.tsx
 
-import { createServerSupabaseClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import TemplateManagement from '@/components/dashboard/template';
 import { getUser } from '@/utils/supabase/session';
@@ -9,7 +9,7 @@ import { getProductsWithPrices } from '@/utils/supabase/products';
 
 export default async function TemplatePage() {
   const cookieStore = cookies();
-  const supabase = createServerSupabaseClient(cookieStore);
+  const supabase = createClient();
 
   // Get user, subscription, and product data
   const { user } = await getUser(cookieStore);

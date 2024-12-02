@@ -10,7 +10,7 @@ import {
 } from '@/types/llm/scope';
 import { createClient } from '@/utils/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
-import { Json } from '@/types/types_db';
+import { convertToJson, convertFromJson, validateScopeContext, validateLLMPreferences } from '@/utils/type-converters';
 
 export class ScopeManager implements ScopeManagerInterface {
   private scopes: Map<string, Scope>;
@@ -18,20 +18,23 @@ export class ScopeManager implements ScopeManagerInterface {
 
   constructor() {
     this.scopes = new Map();
-    this.supabase = createClient<Database>();
+    this.supabase = createClient();
     this.initialize();
   }
 
   private mapDbScopeToScope(dbScope: Database['public']['Tables']['scopes']['Row']): Scope {
+    const context = validateScopeContext(dbScope.context);
+    const llmPreferences = validateLLMPreferences(dbScope.llm_preferences);
+    
     return {
       id: dbScope.id,
       type: dbScope.type as ScopeType,
       name: dbScope.name,
       description: dbScope.description || undefined,
-      context: dbScope.context as ScopeContext,
-      llmPreferences: dbScope.llm_preferences as LLMPreferences | undefined,
+      context,
+      llmPreferences,
       templateId: dbScope.template_id || undefined,
-      metadata: dbScope.metadata as Record<string, any> | undefined,
+      metadata: dbScope.metadata as Record<string, any> || undefined,
       createdAt: new Date(dbScope.created_at),
       updatedAt: new Date(dbScope.updated_at)
     };
@@ -43,10 +46,10 @@ export class ScopeManager implements ScopeManagerInterface {
       type: scope.type,
       name: scope.name,
       description: scope.description || null,
-      context: scope.context as Json,
-      llm_preferences: scope.llmPreferences as Json | null,
+      context: convertToJson(scope.context),
+      llm_preferences: scope.llmPreferences ? convertToJson(scope.llmPreferences) : null,
       template_id: scope.templateId || null,
-      metadata: scope.metadata as Json | null,
+      metadata: scope.metadata ? convertToJson(scope.metadata) : null,
       created_at: scope.createdAt.toISOString(),
       updated_at: scope.updatedAt.toISOString()
     };
