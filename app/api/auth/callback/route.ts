@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     const tokens = await provider.exchangeCodeForTokens(code);
 
     // Get user email address
-    const emailAddress = await provider.getUserEmail(tokens.access_token);
+    const emailAddress = await provider.getUserEmail(tokens.accessToken);
 
     // Store email account in database
     const { data: accountData, error: insertError } = await supabase
@@ -73,9 +73,9 @@ export async function GET(request: Request) {
         user_id: user.id,
         llm_id: providerType,
         api_key: JSON.stringify({
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: Date.now() + tokens.expires_in * 1000,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresAt,
         }),
       });
 
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     if (accountData) {
       const { realTimeSyncService } = await import('@/services/email/RealTimeSyncService');
       await realTimeSyncService.startSync(user.id);
-      await realTimeSyncService.syncAccount(accountData.id);
+      await realTimeSyncService.triggerAccountSync(accountData.id);
     }
 
     return NextResponse.redirect(

@@ -2231,7 +2231,7 @@ export interface Database {
           };
         };
       };
-  
+
       // Adding `get_trash_storage_usage`
       get_trash_storage_usage: {
         Args: Record<string, never>;
@@ -2471,19 +2471,21 @@ export interface DatabaseTTS {
           full_name: string | null;
           id: string;
           credits: number | null;
-          // Removed billing_address and payment_method
+          trial_credits: number | null; // Add this line
         };
         Insert: {
           avatar_url?: string | null;
           full_name?: string | null;
           id: string;
           credits?: number | null;
+          trial_credits?: number | null; // Add this line
         };
         Update: {
           avatar_url?: string | null;
           full_name?: string | null;
           id?: string;
           credits?: number | null;
+          trial_credits?: number | null; // Add this line
         };
         Relationships: [
           {

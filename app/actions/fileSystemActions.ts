@@ -3,46 +3,47 @@
 'use server'
 
 import { FileService } from '@/services/files/FileService';
+import type { FileOperationResult } from '@/types/FileTypes';
 
-export async function handleFileAction(action: string, fileId: string) {
-  const fileService = new FileService();
-  switch (action) {
-    case 'share':
-      return await fileService.shareFile(fileId);
-    case 'move':
-      return await fileService.moveFile(fileId, /* destination */);
-    case 'star':
-      return await fileService.starFile(fileId);
-    case 'rename':
-      return await fileService.renameFile(fileId, /* newName */);
-    case 'download':
-      return await fileService.getDownloadLink(fileId);
-    case 'report':
-      return await fileService.reportFile(fileId);
-    case 'delete':
-      return await fileService.deleteFile(fileId);
-    default:
-      throw new Error(`Unsupported action: ${action}`);
-  }
+interface ActionParams {
+  newName?: string;
+  destinationId?: string | null;
 }
 
-export async function handleFolderAction(action: string, folderId: string) {
+export async function handleEntityAction(
+  action: string, 
+  entityId: string, 
+  entityType: 'file' | 'folder',
+  params?: ActionParams
+): Promise<FileOperationResult | string> {
   const fileService = new FileService();
+
   switch (action) {
     case 'share':
-      return await fileService.shareFolder(folderId);
+      return entityType === 'file' 
+        ? await fileService.shareFile(entityId)
+        : await fileService.shareFolder(entityId);
     case 'move':
-      return await fileService.moveFolder(folderId, /* destination */);
+      return await fileService.moveFile(entityId, params?.destinationId || null);
     case 'star':
-      return await fileService.starFolder(folderId);
+      return entityType === 'file'
+        ? await fileService.starFile(entityId)
+        : await fileService.starFolder(entityId);
     case 'rename':
-      return await fileService.renameFolder(folderId, /* newName */);
+      if (!params?.newName) throw new Error('New name required');
+      return entityType === 'file'
+        ? await fileService.renameFile(entityId, params.newName)
+        : await fileService.renameFolder(entityId, params.newName);
     case 'download':
-      return await fileService.getFolderDownloadLink(folderId);
+      return entityType === 'file'
+        ? await fileService.getDownloadLink(entityId)
+        : await fileService.getFolderDownloadLink(entityId);
     case 'report':
-      return await fileService.reportFolder(folderId);
+      return entityType === 'file'
+        ? await fileService.reportFile(entityId)
+        : await fileService.reportFolder(entityId);
     case 'delete':
-      return await fileService.deleteFolder(folderId);
+      return await fileService.deleteFile(entityId);
     default:
       throw new Error(`Unsupported action: ${action}`);
   }

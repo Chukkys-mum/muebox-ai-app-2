@@ -9,6 +9,8 @@ import {
   FileStorageUsage
 } from "@/types/FileTypes";
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
+import { IArchiveService } from './types';  // Add this import
+
 
 // Define missing types
 type FileWithCategory = FileRow & { category: FileCategory };
@@ -25,7 +27,7 @@ type StorageUsageResponse = {
   };
 };
 
-export class ArchiveService extends FileService {
+export class ArchiveService extends FileService implements IArchiveService {
   async getArchivedFiles(
     page: number = 1,
     limit: number = 10
@@ -257,4 +259,4 @@ export class ArchiveService extends FileService {
   }
 }
 
-export default new ArchiveService();
+export const archiveService: IArchiveService = new ArchiveService();

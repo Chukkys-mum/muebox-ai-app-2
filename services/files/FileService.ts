@@ -226,6 +226,50 @@ export class FileService extends BaseService {
       return { used: 0, total: 0, breakdown: {} };
     }
   }
+
+  // In FileService:
+
+async shareFile(fileId: string): Promise<FileOperationResult> {
+  return this.shareEntity(fileId, 'file');
+}
+
+async shareFolder(folderId: string): Promise<FileOperationResult> {
+  return this.shareEntity(folderId, 'folder');
+}
+
+async starFile(fileId: string): Promise<FileOperationResult> {
+  return this.starEntity(fileId, 'file');
+}
+
+async starFolder(folderId: string): Promise<FileOperationResult> {
+  return this.starEntity(folderId, 'folder');
+}
+
+async renameFile(fileId: string, newName: string): Promise<FileOperationResult> {
+  return this.renameEntity(fileId, newName, 'file');
+}
+
+async renameFolder(folderId: string, newName: string): Promise<FileOperationResult> {
+  return this.renameEntity(folderId, newName, 'folder');
+}
+
+async reportFile(fileId: string): Promise<FileOperationResult> {
+  return this.reportEntity(fileId, 'file');
+}
+
+async reportFolder(folderId: string): Promise<FileOperationResult> {
+  return this.reportEntity(folderId, 'folder');
+}
+
+async getDownloadLink(fileId: string): Promise<string> {
+  return this.getEntityDownloadLink(fileId, 'file');
+}
+
+async getFolderDownloadLink(folderId: string): Promise<string> {
+  return this.getEntityDownloadLink(folderId, 'folder');
+}
+
+  
 }
 
 // Export the FileService class

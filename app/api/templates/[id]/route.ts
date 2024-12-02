@@ -2,10 +2,10 @@
 // GET /api/templates/[id] - Get template by ID
 
 import { llmManager } from "@/services/llm/LLMManager";
+import { scopeManager } from "@/services/llm/ScopeManager"; // Import the scopeManager instance
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { ScopeManager } from "@/services/llm/ScopeManager";
 
 export async function GET(
   request: Request,
@@ -45,8 +45,11 @@ export async function PUT(
     const json = await request.json();
 
     // Validate updates
-    if (json.scope_id && !scopeManager.getScope(json.scope_id)) {
-      throw new Error('Invalid scope configuration');
+    if (json.scope_id) {
+      const scope = await scopeManager.getScope(json.scope_id);
+      if (!scope) {
+        throw new Error('Invalid scope configuration');
+      }
     }
     if (json.llm_id && !llmManager.getLLMById(json.llm_id)) {
       throw new Error('Invalid LLM configuration');

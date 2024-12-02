@@ -1,55 +1,32 @@
-// hooks/useEmailSync.ts
+// /hooks/useEmailSync.ts
 
 import { useState, useEffect } from 'react';
-import { emailSyncService } from '@/services/email/EmailSyncService';
-import createClient from '@/utils/supabase/client';
+import { emailSyncService, setupEmailSyncAction, cleanupEmailSyncAction } from '@/services/email/EmailSyncService';
+import { realTimeSyncService } from '@/services/email/RealTimeSyncService';
 import { toast } from '@/components/ui/use-toast';
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { EmailAccount } from '@/types/email';
+import { useRouter } from 'next/navigation';
+
+// Define a type for the payload if possible, or use 'any' if it's variable
+type SyncPayload = any;
 
 export function useEmailSync(userId: string) {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const supabase = createClient();
+  const router = useRouter();
 
+  // Function to sync all email accounts for a user
   const syncAllAccounts = async () => {
     if (syncing) return;
     
     setSyncing(true);
     try {
-      // Get all email accounts for user
-      const { data: accounts, error } = await supabase
-        .from('email_accounts')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active') as { data: EmailAccount[] | null, error: any };
-
-      if (error) throw error;
-
-      if (!accounts) {
-        throw new Error('No accounts found');
-      }
-
-      // Sync each account
-      await Promise.all(
-        accounts.map((account: EmailAccount) => 
-          emailSyncService.syncEmails(account.id, userId)
-            .catch(error => {
-              console.error(`Failed to sync account ${account.id}:`, error);
-              toast({
-                title: "Sync Failed",
-                description: `Failed to sync ${account.email_address}`,
-                variant: "destructive",
-              });
-            })
-        )
-      );
-
+      await setupEmailSyncAction(userId);
       setLastSyncTime(new Date());
       toast({
         title: "Sync Complete",
         description: "Your emails have been synchronized",
       });
+      router.refresh(); // Refresh the page to reflect new data
     } catch (error) {
       console.error('Sync error:', error);
       toast({
@@ -62,52 +39,31 @@ export function useEmailSync(userId: string) {
     }
   };
 
-  // Set up real-time sync when component mounts
+  // Initial setup and cleanup
   useEffect(() => {
-    let cleanupFunction: (() => void) | undefined;
+    let unsubscribe: (() => void) | undefined;
 
     const setupSync = async () => {
-      cleanupFunction = await emailSyncService.setupRealTimeSync(userId);
-      
-      // Sync emails initially
-      await syncAllAccounts();
+      try {
+        // Start real-time sync
+        unsubscribe = realTimeSyncService.subscribe(userId, (payload: SyncPayload) => {
+          // Handle real-time updates here
+          console.log('Real-time update:', payload);
+          router.refresh(); // Refresh the page when new data arrives
+        });
+
+        // Perform initial sync
+        await syncAllAccounts();
+      } catch (error) {
+        console.error('Failed to set up sync:', error);
+      }
     };
 
     setupSync();
 
-    // Set up periodic sync every 5 minutes
-    const syncInterval = setInterval(syncAllAccounts, 5 * 60 * 1000);
-
-    // Cleanup on unmount
     return () => {
-      if (cleanupFunction) cleanupFunction();
-      clearInterval(syncInterval);
-    };
-  }, [userId]);
-
-  // Subscribe to email account changes
-  useEffect(() => {
-    const subscription = supabase
-      .channel('email-accounts')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'email_accounts',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload: RealtimePostgresChangesPayload<EmailAccount>) => {
-          if (payload.eventType === 'INSERT') {
-            // New account added, sync it
-            emailSyncService.syncEmails(payload.new.id, userId);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
+      if (unsubscribe) unsubscribe();
+      cleanupEmailSyncAction().catch(console.error);
     };
   }, [userId]);
 

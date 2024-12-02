@@ -1,6 +1,6 @@
-// /components/dashboard/settings/LLMConfig.tsx
+// /components/dashboard/settings/LLM/LLMConfig.tsx
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,45 +24,57 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/utils/supabase/client';
 import { llmProviders } from '@/services/llm/providers';
-import { Database } from '@/types/types_db';
 
-type DbProviderRow = Database['public']['Tables']['llm_providers']['Row'];
-type DbUserApiKeyInsert = Database['public']['Tables']['user_api_keys']['Insert'];
+// Define the correct types based on your actual database structure
+interface LLMProvider {
+    id: string;
+    name: string;
+    contact_info: string | null;
+    website: string | null;
+    created_at: string;
+    capabilities?: string[];
+    is_enabled?: boolean;
+  }
 
-interface LLMProvider extends Omit<DbProviderRow, 'id'> {
+interface UserApiKey {
   id: string;
-  capabilities: string[];
+  llm_id: string;
+  user_id: string;
+  api_key: string;
   is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface LLMConfigProps {
   userId: string;
+  initialProviders: LLMProvider[];
+  initialUserKeys: Array<{
+    llm_id: string;
+    api_key: string;
+  }>;
 }
 
 export function LLMConfig({ userId }: LLMConfigProps) {
-  const [providers, setProviders] = useState<LLMProvider[]>([]);
-  const [userKeys, setUserKeys] = useState<Record<string, string>>({});
-  const [showKeyDialog, setShowKeyDialog] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [newApiKey, setNewApiKey] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
+  const [providers, setProviders] = React.useState<LLMProvider[]>([]);
+  const [userKeys, setUserKeys] = React.useState<Record<string, string>>({});
+  const [showKeyDialog, setShowKeyDialog] = React.useState(false);
+  const [selectedProvider, setSelectedProvider] = React.useState<string | null>(null);
+  const [newApiKey, setNewApiKey] = React.useState('');
+  const [isValidating, setIsValidating] = React.useState(false);
   const { toast } = useToast();
-  const supabase = createClient();
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadProviders();
     loadUserKeys();
   }, []);
 
   const loadProviders = async () => {
-    type PostgresProvider = Database['public']['Tables']['llm_providers']['Row'];
-    
     const { data, error } = await supabase
       .from('llm_providers')
-      .select('*')
-      .eq('is_enabled', true);
+      .select('*');
   
     if (error) {
       toast({
@@ -74,23 +86,16 @@ export function LLMConfig({ userId }: LLMConfigProps) {
     }
   
     if (data) {
-      const providersData = data as unknown as PostgresProvider[];
-      const providersWithCapabilities = providersData.map(row => ({
-        id: row.id,
-        name: row.name,
-        contact_info: row.contact_info,
-        website: row.website,
-        created_at: row.created_at,
-        capabilities: [], // Add from your providers service
-        is_enabled: true
+      const providersWithCapabilities: LLMProvider[] = data.map((row: LLMProvider) => ({
+        ...row,
+        capabilities: row.capabilities || [], // Use existing capabilities or empty array
+        is_enabled: row.is_enabled !== undefined ? row.is_enabled : true // Use existing is_enabled or default to true
       }));
       setProviders(providersWithCapabilities);
     }
   };
 
   const loadUserKeys = async () => {
-    type UserApiKeyResponse = Pick<Database['public']['Tables']['user_api_keys']['Row'], 'llm_id' | 'api_key'>;
-  
     const { data, error } = await supabase
       .from('user_api_keys')
       .select('llm_id, api_key')
@@ -106,9 +111,8 @@ export function LLMConfig({ userId }: LLMConfigProps) {
     }
   
     if (data) {
-      const apiKeyData = data as unknown as UserApiKeyResponse[];
       const keys: Record<string, string> = {};
-      apiKeyData.forEach(row => {
+      data.forEach((row: Pick<UserApiKey, 'llm_id' | 'api_key'>) => {
         keys[row.llm_id] = row.api_key;
       });
       setUserKeys(keys);
@@ -138,14 +142,14 @@ export function LLMConfig({ userId }: LLMConfigProps) {
         return;
       }
   
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('user_api_keys')
         .upsert({
           llm_id: selectedProvider,
           user_id: userId,
           api_key: newApiKey,
           is_enabled: true
-        } as any)); // Use any to bypass the type check temporarily
+        });
   
       if (error) throw error;
   
@@ -189,14 +193,14 @@ export function LLMConfig({ userId }: LLMConfigProps) {
                   {provider.name}
                 </TableCell>
                 <TableCell>
-                  {provider.capabilities.map((cap) => (
+                {provider.capabilities?.map((cap) => (
                     <span
-                      key={cap}
-                      className="inline-block bg-muted px-2 py-1 rounded-md text-xs mr-1"
+                    key={cap}
+                    className="inline-block bg-muted px-2 py-1 rounded-md text-xs mr-1"
                     >
-                      {cap}
+                    {cap}
                     </span>
-                  ))}
+                )) || 'No capabilities'}
                 </TableCell>
                 <TableCell>
                   {userKeys[provider.id] ? '••••••••' : 'Not configured'}

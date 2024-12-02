@@ -2,7 +2,12 @@
 // Modal for creating folders in files and in a knowledge base.
 
 import React, { useState } from "react";
-import { Dialog } from "@/components/ui/dialog"; // Using shadcn Dialog instead of Modal
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 
 interface NewFolderModalProps {
   isOpen: boolean;
@@ -27,10 +32,10 @@ const NewFolderModal: React.FC<NewFolderModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <Dialog.Content>
-        <Dialog.Header>
-          <Dialog.Title>Create New Folder</Dialog.Title>
-        </Dialog.Header>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Folder</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <input
             type="text"
@@ -40,8 +45,8 @@ const NewFolderModal: React.FC<NewFolderModalProps> = ({
             className="w-full p-2 border border-gray-300 rounded-md"
           />
           <div className="flex justify-end space-x-2">
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               Cancel
@@ -55,7 +60,7 @@ const NewFolderModal: React.FC<NewFolderModalProps> = ({
             </button>
           </div>
         </div>
-      </Dialog.Content>
+      </DialogContent>
     </Dialog>
   );
 };

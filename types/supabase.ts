@@ -113,6 +113,60 @@ export interface Database {
         ];
       },
 
+      llm_providers: {
+        Row: {
+          id: string;
+          name: string;
+          contact_info: string | null;
+          website: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          contact_info?: string | null;
+          website?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          contact_info?: string | null;
+          website?: string | null;
+          created_at?: string;
+        };
+      };
+      
+      user_api_keys: {
+        Row: {
+          id: string;
+          llm_id: string;
+          user_id: string;
+          api_key: string;
+          is_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          llm_id: string;
+          user_id: string;
+          api_key: string;
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          llm_id?: string;
+          user_id?: string;
+          api_key?: string;
+          is_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
       archives: {
         Row: {
           id: string;

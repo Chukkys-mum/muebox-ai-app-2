@@ -150,6 +150,24 @@ export class BaseService {
     }
   }
 
+  protected async updateEntity(
+    entityId: string,
+    updates: Partial<FileRow>,
+    entityType: 'file' | 'folder',
+    successMessage: string
+  ): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update(this.transformToDatabase(updates))
+        .eq("id", entityId)
+        .eq("type", entityType)
+        .select()
+        .single(),
+      successMessage
+    );
+  }
+
   async getStorageUsage(): Promise<FileStorageUsage> {
     try {
       const { data, error } = await this.supabase.rpc('get_storage_usage') as PostgrestSingleResponse<{
@@ -170,4 +188,58 @@ export class BaseService {
       return { used: 0, total: 0, breakdown: {} };
     }
   }
+
+  async shareEntity(entityId: string, entityType: 'file' | 'folder'): Promise<FileOperationResult> {
+    return this.updateEntity(
+      entityId,
+      { is_shared: true },
+      entityType,
+      `${entityType} shared successfully`
+    );
+  }
+  
+  async starEntity(entityId: string, entityType: 'file' | 'folder'): Promise<FileOperationResult> {
+    return this.updateEntity(
+      entityId,
+      { starred: true },
+      entityType,
+      `${entityType} starred successfully`
+    );
+  }
+  
+  async renameEntity(entityId: string, newName: string, entityType: 'file' | 'folder'): Promise<FileOperationResult> {
+    return this.updateEntity(
+      entityId,
+      { file_name: newName },
+      entityType,
+      `${entityType} renamed successfully`
+    );
+  }
+  
+  async reportEntity(entityId: string, entityType: 'file' | 'folder'): Promise<FileOperationResult> {
+    return this.updateEntity(
+      entityId,
+      { 
+        metadata: {
+          reported: true,
+          reported_at: new Date().toISOString()
+        }
+      },
+      entityType,
+      `${entityType} reported successfully`
+    );
+  }
+  
+  async getEntityDownloadLink(entityId: string, entityType: 'file' | 'folder'): Promise<string> {
+    const { data } = await this.supabase
+      .from("files")
+      .select("file_path")
+      .eq("id", entityId)
+      .eq("type", entityType)
+      .single();
+      
+    if (!data?.file_path) throw new Error(`${entityType} not found`);
+    return data.file_path;
+  }
 }
+
