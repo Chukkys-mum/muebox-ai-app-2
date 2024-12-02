@@ -1,9 +1,8 @@
 // - TemplateManager.ts (core template service)
 
-// /services/template/TemplateManager.ts
-
 import { createClient } from '@/utils/supabase/server';
 import type { Database } from '@/types/types_db';
+import { Json } from '@/types/types_db';
 import { 
   Template, 
   TemplateManagerInterface, 
@@ -85,6 +84,24 @@ export class TemplateManager implements TemplateManagerInterface {
     }
   }
 
+  private mapTemplateToDb(template: Template): Database['public']['Tables']['templates']['Insert'] {
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      metadata: JSON.stringify(template.metadata) as Json,
+      configuration: JSON.stringify(template.configuration) as Json,
+      prompts: JSON.stringify(template.prompts) as Json,
+      validation: JSON.stringify(template.validation) as Json,
+      version: template.version,
+      user_id: getUserId(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      archived: false
+    };
+  }
+
   public async getTemplate(id: string, version?: string): Promise<Template | null> {
     try {
       let query = this.supabase
@@ -99,7 +116,7 @@ export class TemplateManager implements TemplateManagerInterface {
       // If specific version requested, get from version history
       if (version && version !== data.version) {
         const versionData = await this.getTemplateVersion(id, version);
-        if (versionData) return versionData.template;
+        if (versionData) return versionData;
       }
 
       return this.parseTemplateFromDB(data);
@@ -309,32 +326,13 @@ export class TemplateManager implements TemplateManagerInterface {
     return `${major}.${minor}.${patch + 1}`;
   }
 
-  
-private mapTemplateToDb(template: Template): Database['public']['Tables']['templates']['Insert'] {
-    return {
-      id: template.id,
-      name: template.name,
-      description: template.description,
-      category: template.category,
-      metadata: template.metadata as Json,
-      configuration: template.configuration as Json,
-      prompts: template.prompts as Json,
-      validation: template.validation as Json,
-      version: template.version,
-      user_id: getUserId(), // You need to implement this to get the current user ID
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      archived: false
-    };
-  }
-
   private async createVersionRecord(template: Template): Promise<void> {
     try {
       const versionRecord = {
         template_id: template.id,
         version: template.version,
-        changes: [] as Json, // Add your changes tracking logic
-        template_data: template as Json,
+        changes: [] as Json, // Change this line
+        template_data: JSON.stringify(template) as Json,
         created_at: new Date().toISOString(),
         created_by: template.metadata.author
       };
@@ -347,16 +345,50 @@ private mapTemplateToDb(template: Template): Database['public']['Tables']['templ
     }
   }
 
-  private async getTemplateVersion(templateId: string, version: string) {
+  private async getTemplateVersion(templateId: string, version: string): Promise<Template | null> {
     const { data, error } = await this.supabase
       .from('template_versions')
       .select('*')
-      .eq('templateId', templateId)
+      .eq('template_id', templateId)
       .eq('version', version)
       .single();
   
     if (error || !data) return null;
-    return this.parseTemplateFromDB(data.template_data as any);
+    
+    if (typeof data.template_data === 'string') {
+      try {
+        const parsedData = JSON.parse(data.template_data);
+        return this.validateAndCastTemplate(parsedData);
+      } catch (e) {
+        console.error('Error parsing template_data:', e);
+        return null;
+      }
+    } else if (data.template_data && typeof data.template_data === 'object') {
+      return this.validateAndCastTemplate(data.template_data);
+    } else {
+      console.error('Invalid template_data:', data.template_data);
+      return null;
+    }
+  }
+
+  private validateAndCastTemplate(data: unknown): Template | null {
+    // Add validation logic here to ensure data matches Template interface
+    if (
+      typeof data === 'object' && data !== null &&
+      'id' in data && typeof data.id === 'string' &&
+      'version' in data && typeof data.version === 'string' &&
+      'name' in data && typeof data.name === 'string' &&
+      'description' in data && typeof data.description === 'string' &&
+      // Add more checks for other required properties
+      'metadata' in data && typeof data.metadata === 'object' &&
+      'configuration' in data && typeof data.configuration === 'object' &&
+      'prompts' in data && typeof data.prompts === 'object' &&
+      'validation' in data && Array.isArray(data.validation)
+    ) {
+      return data as Template;
+    }
+    console.error('Data does not match Template interface:', data);
+    return null;
   }
 
   private parseTemplateFromDB(data: any): Template {
@@ -371,6 +403,8 @@ private mapTemplateToDb(template: Template): Database['public']['Tables']['templ
     };
   }
 }
+
+
 
 // Export singleton instance
 export const templateManager = new TemplateManager();

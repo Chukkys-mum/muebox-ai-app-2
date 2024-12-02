@@ -20,6 +20,8 @@ export interface EmailAccount extends WithTimestamps, WithStatus {
   user_id: string;
   provider: string;
   email_address: string;
+  sync_status?: 'syncing' | 'error' | 'success';
+  last_sync?: string;
 }
 
 export interface EmailSender {
@@ -59,13 +61,7 @@ export interface Email extends Omit<EmailData, 'sender' | 'recipient' | 'email_b
   labels?: string[];
 }
 
-// Email Account interface
-export interface EmailAccount extends WithTimestamps, WithStatus {
-  id: string;
-  user_id: string;
-  provider: string;
-  email_address: string;
-}
+
 
 // Interface for email analysis
 export interface EmailAnalysis extends WithTimestamps, WithStatus {

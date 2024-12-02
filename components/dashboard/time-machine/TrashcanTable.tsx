@@ -47,7 +47,7 @@ export const TrashcanTable: React.FC<TrashcanTableProps> = ({
                 className="border-t border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
               >
                 <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                  {file.name}
+                {file.file_name} {/* Changed from file.name to file.file_name */}
                 </td>
                 <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
                   {file.category}

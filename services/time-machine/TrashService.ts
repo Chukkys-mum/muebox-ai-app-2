@@ -5,7 +5,6 @@ import { FileRow, FileStatus, FileCategory, CompatibleFileRow } from "@/types/Fi
 import { Database } from '@/types/types_db';
 import { BaseService } from '../BaseService';
 
-
 type TrashRow = Database['public']['Tables']['files']['Row'];
 type StorageUsage = {
   used_space: number;
@@ -22,50 +21,59 @@ interface TrashedFile {
   description: string | null;
 }
 
+function isValidFileStatus(status: string): status is FileStatus {
+  return ['active', 'archived', 'deleted', 'trashed'].includes(status);
+}
+
+function isValidFileCategory(category: string | null): category is FileCategory | null {
+  return category === null || ['image', 'video', 'audio', 'document', 'code', 'archive', 'other'].includes(category);
+}
+
 class TrashService extends BaseService {
   async getTrashedFiles(
     page: number = 1,
     limit: number = 10
   ): Promise<{ files: FileRow[]; total: number }> {
     try {
-          const start = (page - 1) * limit;
-          const end = start + limit - 1;
+      const start = (page - 1) * limit;
+      const end = start + limit - 1;
       
-          const { data, error, count } = await this.supabase
-            .from("files")
-            .select("*", { count: "exact" })
-            .eq("status", "trashed")
-            .order("deleted_at", { ascending: false })
-            .range(start, end);
+      const { data, error, count } = await this.supabase
+        .from("files")
+        .select("*", { count: "exact" })
+        .eq("status", "trashed")
+        .order("deleted_at", { ascending: false })
+        .range(start, end);
       
-          if (error) throw error;
+      if (error) throw error;
       
-          const files = (data || []).map((row: TrashRow): FileRow => {
-            // Create a compatible object that matches FileRow
-            const compatibleRow: CompatibleFileRow = {
-              ...row,
-              type: row.type || 'file',
-              status: row.status || 'trashed',
-              extension: row.extension || null,
-              mime_type: row.mime_type || row.file_type || null,
-              is_pinned: false,
-              starred: false,
-              tags: [],
-              description: '',
-              is_shared: false,
-              shared_with: [],
-              permissions: null,
-              user_id: row.uploaded_by,
-            };
-            return this.transformDatabaseFile(compatibleRow);
-          });
+      const files = (data || []).map((row: TrashRow): FileRow => {
+        const metadata = row.metadata as Record<string, any> | null;
+        const compatibleRow: CompatibleFileRow = {
+          ...row,
+          type: row.type || 'file',
+          status: isValidFileStatus(row.status) ? row.status : 'trashed',
+          category: isValidFileCategory(row.category) ? row.category : null,
+          extension: row.extension || null,
+          mime_type: row.mime_type || row.file_type || null,
+          is_pinned: false,
+          starred: false,
+          tags: metadata?.tags || [],
+          description: metadata?.description || '',
+          is_shared: false,
+          shared_with: [],
+          permissions: null,
+          user_id: row.uploaded_by,
+        };
+        return this.transformDatabaseFile(compatibleRow);
+      });
       
-          return { files, total: count || 0 };
-        } catch (err) {
-          console.error(err);
-          return { files: [], total: 0 };
-        }
-      }
+      return { files, total: count || 0 };
+    } catch (err) {
+      console.error(err);
+      return { files: [], total: 0 };
+    }
+  }
 
   async getStorageUsage(): Promise<{ 
     used: number; 
@@ -171,30 +179,42 @@ class TrashService extends BaseService {
     }
   }
 
-  async searchTrashedFiles(query: string): Promise<TrashedFile[]> {
+  async searchTrashedFiles(query: string): Promise<FileRow[]> {
     try {
       const { data, error } = await this.supabase
         .from("files")
         .select("*")
         .eq("status", "trashed")
         .ilike("file_name", `%${query}%`);
-
+  
       if (error) {
         throw new Error(`Error searching trashed files: ${error.message}`);
       }
-
-      const files = (data || []).map((file): TrashedFile => ({
-        id: file.id,
-        name: file.file_name,
-        size: file.size,
-        deletedAt: file.deleted_at || '',
-        tags: file.tags || null,
-        description: file.description || null,
-      }));
-
+  
+      const files = (data || []).map((row: TrashRow): FileRow => {
+        const metadata = row.metadata as Record<string, any> | null;
+        const compatibleRow: CompatibleFileRow = {
+          ...row,
+          type: row.type || 'file',
+          status: isValidFileStatus(row.status) ? row.status : 'trashed',
+          category: isValidFileCategory(row.category) ? row.category : null,
+          extension: row.extension || null,
+          mime_type: row.mime_type || row.file_type || null,
+          is_pinned: false,
+          starred: false,
+          tags: metadata?.tags || [],
+          description: metadata?.description || '',
+          is_shared: false,
+          shared_with: [],
+          permissions: null,
+          user_id: row.uploaded_by,
+        };
+        return this.transformDatabaseFile(compatibleRow);
+      });
+  
       return files;
     } catch (err) {
-      console.error(err);
+      console.error('Error searching trashed files:', err);
       return [];
     }
   }

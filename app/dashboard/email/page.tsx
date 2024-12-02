@@ -1,6 +1,6 @@
 // /app/dashboard/email/page.tsx
 
-import { Metadata } from 'next';
+import  Metadata  from 'next';
 import EmailLayout from '@/components/layout/EmailLayout';
 import EmailList from '@/components/modules/email/EmailList';
 import { mockEmails } from '@/data/email';

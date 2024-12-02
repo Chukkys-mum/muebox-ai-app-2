@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { emailSyncService } from '@/services/email/EmailSyncService';
-import { createClient } from '@/utils/supabase/client';
+import createClient from '@/utils/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { EmailAccount } from '@/types/email';
 
 export function useEmailSync(userId: string) {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const supabase = createClient();
 
-  // Function to sync all email accounts for a user
   const syncAllAccounts = async () => {
     if (syncing) return;
     
@@ -21,13 +22,17 @@ export function useEmailSync(userId: string) {
         .from('email_accounts')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'active');
+        .eq('status', 'active') as { data: EmailAccount[] | null, error: any };
 
       if (error) throw error;
 
+      if (!accounts) {
+        throw new Error('No accounts found');
+      }
+
       // Sync each account
       await Promise.all(
-        accounts.map(account => 
+        accounts.map((account: EmailAccount) => 
           emailSyncService.syncEmails(account.id, userId)
             .catch(error => {
               console.error(`Failed to sync account ${account.id}:`, error);
@@ -59,17 +64,23 @@ export function useEmailSync(userId: string) {
 
   // Set up real-time sync when component mounts
   useEffect(() => {
-    const cleanup = emailSyncService.setupRealTimeSync(userId);
-    
-    // Sync emails initially
-    syncAllAccounts();
+    let cleanupFunction: (() => void) | undefined;
+
+    const setupSync = async () => {
+      cleanupFunction = await emailSyncService.setupRealTimeSync(userId);
+      
+      // Sync emails initially
+      await syncAllAccounts();
+    };
+
+    setupSync();
 
     // Set up periodic sync every 5 minutes
     const syncInterval = setInterval(syncAllAccounts, 5 * 60 * 1000);
 
     // Cleanup on unmount
     return () => {
-      cleanup();
+      if (cleanupFunction) cleanupFunction();
       clearInterval(syncInterval);
     };
   }, [userId]);
@@ -86,7 +97,7 @@ export function useEmailSync(userId: string) {
           table: 'email_accounts',
           filter: `user_id=eq.${userId}`,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<EmailAccount>) => {
           if (payload.eventType === 'INSERT') {
             // New account added, sync it
             emailSyncService.syncEmails(payload.new.id, userId);

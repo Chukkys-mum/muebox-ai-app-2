@@ -1,6 +1,6 @@
 // /app/dashboard/email/compose/page.tsx
 
-import { Metadata } from 'next';
+import  Metadata  from 'next';
 import EmailLayout from '@/components/layout/EmailLayout';
 import EmailCompose from '@/components/modules/email/EmailCompose';
 import { useRouter } from 'next/navigation';

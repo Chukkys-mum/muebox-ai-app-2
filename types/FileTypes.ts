@@ -15,8 +15,8 @@ export interface TrashRow {
   file_name: string;
   size: number;
   type: 'file' | 'folder';
-  status: string;
-  category: string | null;
+  status: FileStatus;
+  category: FileCategory | null;
   extension: string | null;
   mime_type: string | null;
   file_type: string | null;
@@ -32,7 +32,9 @@ export interface TrashRow {
   metadata: Record<string, any> | null;
 }
 
-export interface CompatibleFileRow extends TrashRow {
+export interface CompatibleFileRow extends Omit<TrashRow, 'status' | 'category'> {
+  status: FileStatus;
+  category: FileCategory | null;
   is_pinned: boolean;
   starred: boolean;
   tags: string[];

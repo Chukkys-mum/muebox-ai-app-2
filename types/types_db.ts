@@ -1017,6 +1017,41 @@ export interface Database {
         ];
       };
 
+      email_sync_status: {
+        Row: {
+          id: string
+          account_id: string
+          status: 'syncing' | 'error' | 'success'
+          last_sync: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          account_id: string
+          status: 'syncing' | 'error' | 'success'
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          account_id?: string
+          status?: 'syncing' | 'error' | 'success'
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sync_status_account_id_fkey"
+            columns: ["account_id"]
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
       emails: {
         Row: {
           id: string;
@@ -1996,6 +2031,7 @@ export interface Database {
           archived?: boolean;
         };
       };
+      
       template_versions: {
         Row: {
           id: string;
@@ -2020,6 +2056,7 @@ export interface Database {
           template_data?: Json;
         };
       };
+      
       template_usage: {
         Row: {
           id: string;

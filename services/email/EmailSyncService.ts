@@ -1,308 +1,174 @@
-// services/EmailSyncService.ts
+// /services/email/EmailSyncService.ts
 
 import { createClient } from '@/utils/supabase/server';
-import { Database } from '@/types/types_db';
+import { EmailProviderFactory, ProviderType } from './providers/ProviderFactory';
+import { realTimeSyncService } from './RealTimeSyncService';
+import { toast } from '@/components/ui/use-toast';
+import { revalidatePath } from 'next/cache';
+import cron from 'node-cron';
 
-// Add this interface to define the shape of the header object
-interface EmailHeader {
-  name: string;
-  value: string;
+type SyncFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
+
+interface EmailAccount {
+  id: string;
+  user_id: string;
+  provider: string;
+  email_address: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  sync_frequency?: SyncFrequency;
+  last_sync?: string;
 }
 
 export class EmailSyncService {
   private supabase;
+  private schedules: Map<string, cron.ScheduledTask> = new Map();
 
   constructor() {
     this.supabase = createClient();
   }
 
-  private async refreshTokenIfNeeded(accountId: string): Promise<string> {
-    const { data: tokenData, error: tokenError } = await this.supabase
-      .from('user_api_keys')
-      .select('api_key')
-      .eq('id', accountId)
-      .single();
+  private async getEmailAccounts(userId: string): Promise<EmailAccount[]> {
+    const { data: accounts, error } = await this.supabase
+      .from('email_accounts')
+      .select('*')
+      .eq('user_id', userId);
 
-    if (tokenError || !tokenData) {
-      throw new Error('Failed to retrieve tokens');
-    }
-
-    const tokens = JSON.parse(tokenData.api_key);
-    if (Date.now() >= tokens.expires_at) {
-      // Token has expired, refresh it
-      const response = await fetch(
-        tokens.provider === 'outlook'
-          ? 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-          : 'https://oauth2.googleapis.com/token',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            client_id: tokens.provider === 'outlook'
-              ? process.env.MICROSOFT_CLIENT_ID!
-              : process.env.GOOGLE_CLIENT_ID!,
-            client_secret: tokens.provider === 'outlook'
-              ? process.env.MICROSOFT_CLIENT_SECRET!
-              : process.env.GOOGLE_CLIENT_SECRET!,
-            refresh_token: tokens.refresh_token,
-            grant_type: 'refresh_token',
-          }),
-        }
-      );
-
-      const newTokens = await response.json();
-      const updatedTokens = {
-        ...tokens,
-        access_token: newTokens.access_token,
-        expires_at: Date.now() + newTokens.expires_in * 1000,
-      };
-
-      // Update stored tokens
-      await this.supabase
-        .from('user_api_keys')
-        .update({ api_key: JSON.stringify(updatedTokens) })
-        .eq('id', accountId);
-
-      return newTokens.access_token;
-    }
-
-    return tokens.access_token;
+    if (error) throw error;
+    return accounts;
   }
 
-  async syncEmails(accountId: string, userId: string): Promise<void> {
-    const { data: account, error: accountError } = await this.supabase
+  setupEmailSync = async (userId: string) => {
+    try {
+      await realTimeSyncService.startSync(userId);
+
+      const accounts = await this.getEmailAccounts(userId);
+
+      for (const account of accounts) {
+        await this.syncEmails(account.id, userId);
+        if (account.sync_frequency) {
+          await this.setupSyncSchedule(account.id, userId, account.sync_frequency);
+        }
+      }
+
+      revalidatePath('/dashboard');
+    } catch (error) {
+      console.error('Email sync setup failed:', error);
+      toast({
+        title: "Sync Setup Failed",
+        description: "Failed to set up email synchronization",
+        variant: "destructive"
+      });
+    }
+  }
+
+  syncEmails = async (accountId: string, userId: string): Promise<void> => {
+    const account = await this.getEmailAccount(accountId);
+
+    if (!account) {
+      throw new Error('Email account not found');
+    }
+
+    const provider = EmailProviderFactory.getProvider(
+      account.provider as ProviderType,
+      this.getProviderConfig(account.provider as ProviderType)
+    );
+
+    await provider.syncEmails(account, userId);
+    revalidatePath(`/emails/${accountId}`); // Revalidate the specific email account page
+  }
+
+  setupSyncSchedule = async (accountId: string, userId: string, frequency: SyncFrequency) => {
+    this.cancelSyncSchedule(accountId);
+
+    let cronExpression: string;
+    switch (frequency) {
+      case 'hourly': cronExpression = '0 * * * *'; break;
+      case 'daily': cronExpression = '0 0 * * *'; break;
+      case 'weekly': cronExpression = '0 0 * * 0'; break;
+      case 'monthly': cronExpression = '0 0 1 * *'; break;
+      case 'quarterly': cronExpression = '0 0 1 */3 *'; break;
+      case 'annually': cronExpression = '0 0 1 1 *'; break;
+      default: throw new Error('Invalid frequency');
+    }
+
+    const task = cron.schedule(cronExpression, () => {
+      this.syncEmails(accountId, userId);
+    });
+
+    this.schedules.set(accountId, task);
+  }
+
+  cancelSyncSchedule(accountId: string) {
+    const existingSchedule = this.schedules.get(accountId);
+    if (existingSchedule) {
+      existingSchedule.stop();
+      this.schedules.delete(accountId);
+    }
+  }
+
+  private async getEmailAccount(accountId: string) {
+    const { data: account, error } = await this.supabase
       .from('email_accounts')
       .select('*')
       .eq('id', accountId)
       .single();
 
-    if (accountError || !account) {
-      throw new Error('Email account not found');
-    }
+    if (error) throw error;
+    return account;
+  }
 
-    const accessToken = await this.refreshTokenIfNeeded(accountId);
-
-    // Fetch emails based on provider
-    if (account.provider === 'gmail') {
-      await this.syncGmailEmails(account.id, userId, accessToken);
-    } else if (account.provider === 'outlook') {
-      await this.syncOutlookEmails(account.id, userId, accessToken);
+  private getProviderConfig(provider: ProviderType) {
+    switch (provider) {
+      case 'gmail':
+        return {
+          clientId: process.env.NEXT_PUBLIC_GMAIL_CLIENT_ID!,
+          clientSecret: process.env.GMAIL_CLIENT_SECRET!,
+          redirectUri: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+          scopes: ['https://mail.google.com/']
+        };
+      // Add other provider configurations here
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
     }
   }
 
-  private async syncGmailEmails(accountId: string, userId: string, accessToken: string): Promise<void> {
-    const response = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100',
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-    
-    // Process each email
-    for (const message of data.messages) {
-      const emailResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      const emailData = await emailResponse.json();
-      
-      // Extract email details
-      const headers = emailData.payload.headers;
-      const subject = headers.find((h: EmailHeader) => h.name === 'Subject')?.value;
-      const sender = headers.find((h: EmailHeader) => h.name === 'From')?.value;
-      const recipient = headers.find((h: EmailHeader) => h.name === 'To')?.value;
-
-      // Store in database
-      await this.supabase.from('emails').upsert({
-        id: message.id,
-        user_id: userId,
-        email_account_id: accountId,
-        subject,
-        sender,
-        recipient: { to: recipient },
-        email_body: emailData.snippet,
-        status: 'analyzed',
-      });
-    }
-  }
-
-  private async syncOutlookEmails(accountId: string, userId: string, accessToken: string): Promise<void> {
-    const response = await fetch(
-      'https://graph.microsoft.com/v1.0/me/messages?$top=100&$select=id,subject,from,toRecipients,bodyPreview',
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const data = await response.json();
-    
-    // Process each email
-    for (const message of data.value) {
-      // Store in database
-      await this.supabase.from('emails').upsert({
-        id: message.id,
-        user_id: userId,
-        email_account_id: accountId,
-        subject: message.subject,
-        sender: message.from.emailAddress.address,
-        recipient: { to: message.toRecipients.map((r: { emailAddress: { address: string } }) => r.emailAddress.address) },
-        email_body: message.bodyPreview,
-        status: 'analyzed',
-      });
-    }
-  }
-
-  async handleAttachments(emailId: string, accountId: string, messageId: string): Promise<void> {
-    const { data: account, error: accountError } = await this.supabase
+  updateSyncFrequency = async (accountId: string, userId: string, frequency: SyncFrequency) => {
+    await this.supabase
       .from('email_accounts')
-      .select('provider')
-      .eq('id', accountId)
-      .single();
-
-    if (accountError || !account) {
-      throw new Error('Email account not found');
-    }
-
-    const accessToken = await this.refreshTokenIfNeeded(accountId);
-    
-    if (account.provider === 'gmail') {
-      await this.handleGmailAttachments(emailId, messageId, accessToken);
-    } else if (account.provider === 'outlook') {
-      await this.handleOutlookAttachments(emailId, messageId, accessToken);
-    }
+      .update({ 
+        sync_frequency: frequency 
+      } as Partial<EmailAccount>) // Type assertion here
+      .eq('id', accountId);
+  
+    await this.setupSyncSchedule(accountId, userId, frequency);
   }
 
-  private async handleGmailAttachments(emailId: string, messageId: string, accessToken: string): Promise<void> {
-    const response = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-    const parts = data.payload.parts || [];
-    
-    for (const part of parts) {
-      if (part.filename && part.body.attachmentId) {
-        // Get attachment content
-        const attachmentResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${part.body.attachmentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-
-        const attachmentData = await attachmentResponse.json();
-        
-        // Store attachment in Supabase Storage
-        const fileName = `${emailId}/${part.filename}`;
-        const { error: uploadError } = await this.supabase
-          .storage
-          .from('email-attachments')
-          .upload(fileName, Buffer.from(attachmentData.data, 'base64'), {
-            contentType: part.mimeType,
-          });
-
-        if (uploadError) {
-          console.error('Failed to upload attachment:', uploadError);
-          continue;
-        }
-
-        // Store attachment metadata in database
-        await this.supabase.from('chat_files').insert({
-          chat_id: emailId,
-          file_type: part.mimeType,
-          file_path: fileName,
-          uploaded_by_id: 'system',
-          status: 'active',
-        });
-      }
-    }
-  }
-
-  private async handleOutlookAttachments(emailId: string, messageId: string, accessToken: string): Promise<void> {
-    const response = await fetch(
-      `https://graph.microsoft.com/v1.0/me/messages/${messageId}/attachments`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-    
-    for (const attachment of data.value) {
-      if (attachment.contentBytes) {
-        // Store attachment in Supabase Storage
-        const fileName = `${emailId}/${attachment.name}`;
-        const { error: uploadError } = await this.supabase
-          .storage
-          .from('email-attachments')
-          .upload(fileName, Buffer.from(attachment.contentBytes, 'base64'), {
-            contentType: attachment.contentType,
-          });
-
-        if (uploadError) {
-          console.error('Failed to upload attachment:', uploadError);
-          continue;
-        }
-
-        // Store attachment metadata in database
-        await this.supabase.from('chat_files').insert({
-          chat_id: emailId,
-          file_type: attachment.contentType,
-          file_path: fileName,
-          uploaded_by_id: 'system',
-          status: 'active',
-        });
-      }
-    }
-  }
-
-  async setupRealTimeSync(userId: string): Promise<() => void> {
-    // Subscribe to email changes
-    const subscription = this.supabase
-      .channel('email-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'emails',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          console.log('Email change received:', payload);
-          // Trigger any UI updates through a callback or event system
-        }
-      )
-      .subscribe();
-
-    // Return cleanup function
-    return () => {
-      subscription.unsubscribe();
-    };
+  cleanup = async () => {
+    await realTimeSyncService.stop();
+    this.schedules.forEach(schedule => schedule.stop());
+    this.schedules.clear();
   }
 }
 
+// Create a singleton instance
 export const emailSyncService = new EmailSyncService();
+
+// Server Action for setting up email sync
+export async function setupEmailSyncAction(userId: string) {
+  'use server';
+  await emailSyncService.setupEmailSync(userId);
+}
+
+// Server Action for cleaning up email sync
+export async function cleanupEmailSyncAction() {
+  'use server';
+  await emailSyncService.cleanup();
+}
+
+// Server Action for updating sync frequency
+export async function updateSyncFrequencyAction(accountId: string, userId: string, frequency: SyncFrequency) {
+  'use server';
+  await emailSyncService.updateSyncFrequency(accountId, userId, frequency);
+}
