@@ -209,3 +209,24 @@ export interface DbTemplateVersion {
   created_at: string;
   created_by: string;
 }
+
+export type TemplateSearchParams = {
+  category?: TemplateCategory;
+  tags?: string[];
+  author?: string;
+  isPublic?: boolean;
+  query?: string;
+};
+
+// Service Interface
+export interface TemplateManagerInterface {
+  createTemplate(template: Omit<Template, 'id'>): Promise<Template>;
+  getTemplate(id: string, version?: string): Promise<Template | null>;
+  updateTemplate(id: string, updates: Partial<Template>): Promise<Template>;
+  deleteTemplate(id: string): Promise<boolean>;
+  listTemplates(params?: TemplateSearchParams): Promise<Template[]>;
+  validateTemplate(template: Template): Promise<boolean>;
+  exportTemplate(id: string): Promise<string>;
+  importTemplate(data: string): Promise<Template>;
+  getTemplateUsage(id: string): Promise<TemplateUsage[]>;
+}

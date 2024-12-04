@@ -1,6 +1,7 @@
 // components/dashboard/files/FileActionsDropdown.tsx
 // Dropdown for file actions like share, rename, delete, etc.
 
+
 import React from "react";
 import {
   DropdownMenu,
@@ -20,56 +21,58 @@ import {
   FiStar,
   FiFlag,
 } from "react-icons/fi";
+import { FileAction } from '@/types';
 
 interface FileActionsDropdownProps {
-  onAction: (action: string) => void;
+  onAction: (action: FileAction) => void;
+  disabled?: boolean;
 }
 
-const FileActionsDropdown: React.FC<FileActionsDropdownProps> = ({ onAction }) => {
-  const menuOptions = [
-    {
-      label: "Share file",
-      icon: <FiShare />,
-      action: "share",
-    },
-    {
-      label: "Move to",
-      icon: <FiMove />,
-      action: "move",
-    },
-    {
-      label: "Add to starred",
-      icon: <FiStar />,
-      action: "star",
-    },
-    {
-      label: "Rename",
-      icon: <FiEdit3 />,
-      action: "rename",
-    },
-    {
-      label: "Download",
-      icon: <FiDownload />,
-      action: "download",
-    },
-    {
-      label: "Report",
-      icon: <FiFlag />,
-      action: "report",
-    },
-    {
-      label: "Delete",
-      icon: <FiTrash2 />,
-      action: "delete",
-      className: "text-red-500 hover:text-red-600",
-    },
-  ];
+const menuOptions: { label: string; icon: JSX.Element; action: FileAction; className?: string }[] = [
+  {
+    label: "Share file",
+    icon: <FiShare />,
+    action: "share" as FileAction,
+  },
+  {
+    label: "Move to",
+    icon: <FiMove />,
+    action: "move" as FileAction,
+  },
+  {
+    label: "Add to starred",
+    icon: <FiStar />,
+    action: "star" as FileAction,
+  },
+  {
+    label: "Rename",
+    icon: <FiEdit3 />,
+    action: "rename" as FileAction,
+  },
+  {
+    label: "Download",
+    icon: <FiDownload />,
+    action: "download" as FileAction,
+  },
+  {
+    label: "Report",
+    icon: <FiFlag />,
+    action: "report" as FileAction,
+  },
+  {
+    label: "Delete",
+    icon: <FiTrash2 />,
+    action: "delete" as FileAction,
+    className: "text-red-500 hover:text-red-600",
+  },
+];
 
+const FileActionsDropdown: React.FC<FileActionsDropdownProps> = ({ onAction, disabled }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="text-sm font-medium">
-          <FiEdit3 className="mr-2" /> {/* Optional: Replace with a trigger icon */}
+        <Button variant="ghost" className="text-sm font-medium" disabled={disabled}>
+          <FiEdit3 className="mr-2" />
           Settings
         </Button>
       </DropdownMenuTrigger>

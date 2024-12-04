@@ -1,3 +1,5 @@
+// /components/dashboard/main/index.tsx
+
 /*eslint-disable*/
 'use client';
 

@@ -37,6 +37,22 @@ export class FileService extends BaseService {
     }
   }
 
+  async fetchFolders(): Promise<FileRow[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('type', 'folder')
+        .eq('status', 'active');
+  
+      if (error) throw error;
+      return data?.map(folder => this.transformDatabaseFile(folder)) || [];
+    } catch (err) {
+      logger.error('Failed to fetch folders', { error: err });
+      return [];
+    }
+  }
+
   async getFileSettings(): Promise<FileSettings | null> {
     try {
       const { data, error } = await this.supabase
@@ -192,6 +208,11 @@ export class FileService extends BaseService {
     );
   }
 
+  static async getFilesByFolder(folderId: string): Promise<FileRow[]> {
+    const service = new FileService();
+    return service.getFilesByFolder(folderId);
+  }
+
   async getFilesByFolder(folderId: string): Promise<FileRow[]> {
     try {
       const { data, error } = await this.supabase
@@ -222,6 +243,11 @@ export class FileService extends BaseService {
       console.error('getFilesByCategory:', err);
       return [];
     }
+  }
+
+  static async getFilesAndFolders(): Promise<FileRow[]> {
+    const service = new FileService();
+    return service.getFilesAndFolders();
   }
 
   async getFilesAndFolders(): Promise<FileRow[]> {

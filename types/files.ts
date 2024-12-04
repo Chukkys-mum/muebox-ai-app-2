@@ -63,7 +63,7 @@ export interface FileRow {
   id: string;
   file_name: string; // Changed from 'name' to match database schema
   size: number;
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'knowledge_base';
   status: FileStatus;
   
   // File-specific properties
@@ -179,6 +179,15 @@ export interface FileTableProps {
     allowedFileTypes?: string[]; // List of allowed file extensions
   }
   
+  export type FileAction = 
+  | 'share'
+  | 'move'
+  | 'star'
+  | 'rename'
+  | 'download'
+  | 'report'
+  | 'delete';
+
   /**
    * Props for file and folder actions dropdowns.
    */

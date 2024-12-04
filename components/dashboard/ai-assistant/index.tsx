@@ -17,6 +17,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { HiMiniPencilSquare, HiSparkles, HiUser } from 'react-icons/hi2';
 import { SpeechControl } from '@/components/ui/SpeechControl';
+import { useToast } from "@/components/ui/use-toast";
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
@@ -38,6 +39,7 @@ interface Props {
   userDetails: { [x: string]: any } | null;
 }
 export default function Assistant(props: Props) {
+  const { toast } = useToast();
   // *** If you use .env.local variable for your API key, method which we recommend, use the apiKey variable commented below
   // Input States
   const [inputMessage, setInputMessage] = useState<string>('');
@@ -64,13 +66,19 @@ export default function Assistant(props: Props) {
   };
 
   const getAssistant = async () => {
+    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    const assistantKey = process.env.NEXT_PUBLIC_OPENAI_ASSISTANT_KEY;
+  
+    if (!apiKey || !assistantKey) {
+      throw new Error('Missing API keys. Please check your environment variables.');
+    }
+  
     const gptResponse = await fetch(
-      'https://api.openai.com/v1/assistants/' +
-        process.env.NEXT_PUBLIC_OPENAI_ASSISTANT_KEY,
+      `https://api.openai.com/v1/assistants/${assistantKey}`,
       {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'OpenAI-Beta': 'assistants=v1'
         }
@@ -196,53 +204,73 @@ export default function Assistant(props: Props) {
     return thread_res;
   };
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    setLoading(true);
-
-    // save the keys in storage browser
-    localStorage.setItem('open_ai_key', process.env.NEXT_PUBLIC_OPENAI_API_KEY);
-    localStorage.setItem(
-      'assistant_key',
-      process.env.NEXT_PUBLIC_OPENAI_ASSISTANT_KEY
-    );
-
-    const assistant_res = await getAssistant();
-    setAssistant(assistant_res);
-    const thread_res = await createThread();
-    setThread(thread_res);
-
-    const message = await createMessage(thread_res.id);
-    let runAssistantResponse = await runAssistant(
-      thread_res.id,
-      assistant_res.id
-    );
-    console.log(runAssistantResponse);
-
-    while (runAssistantResponse.status !== 'completed') {
-      runAssistantResponse = await getRunAssistant(
-        runAssistantResponse.id,
-        thread_res.id
+  const handleSubmit = async (e: any) => { 
+    e.preventDefault(); 
+    
+    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY; 
+    const assistantKey = process.env.NEXT_PUBLIC_OPENAI_ASSISTANT_KEY; 
+  
+    if (!apiKey || !assistantKey) { 
+      toast({ 
+        title: 'Error', 
+        description: 'Missing API keys. Please check your environment variables.', 
+        variant: 'destructive' 
+      }); 
+      return; 
+    } 
+  
+    setLoading(true); 
+  
+    try { 
+      // save the keys in storage browser
+      localStorage.setItem('open_ai_key', apiKey);
+      localStorage.setItem('assistant_key', assistantKey);
+  
+      const assistant_res = await getAssistant();
+      setAssistant(assistant_res);
+      const thread_res = await createThread();
+      setThread(thread_res);
+  
+      const message = await createMessage(thread_res.id);
+      let runAssistantResponse = await runAssistant(
+        thread_res.id,
+        assistant_res.id
       );
-
-      if (runAssistantResponse.status === 'completed') {
-        console.log('Message is : ');
-        const call_response = await getMessage(thread_res.id, message.id);
-        setResMessage(call_response);
-        console.log(await deleteThread(thread_res.id));
-      } else {
-        // sleep for 2 second
-        await new Promise((r) => setTimeout(r, 2000));
+      console.log(runAssistantResponse);
+  
+      while (runAssistantResponse.status !== 'completed') {
+        runAssistantResponse = await getRunAssistant(
+          runAssistantResponse.id,
+          thread_res.id
+        );
+  
+        if (runAssistantResponse.status === 'completed') {
+          console.log('Message is : ');
+          const call_response = await getMessage(thread_res.id, message.id);
+          setResMessage(call_response);
+          console.log(await deleteThread(thread_res.id));
+        } else {
+          // sleep for 2 second
+          await new Promise((r) => setTimeout(r, 2000));
+        }
       }
+  
+      console.log(assistant);
+      console.log(thread);
+      console.log(message);
+      console.log(runAssistantResponse);
+  
+      setSubmitMessage(inputMessage);
+    } catch (error: unknown) {
+      console.error('Error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
-
-    console.log(assistant);
-    console.log(thread);
-    console.log(message);
-    console.log(runAssistantResponse);
-
-    setSubmitMessage(inputMessage);
-    setLoading(false);
   };
 
   // -------------- Copy Response --------------

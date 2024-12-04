@@ -20,57 +20,57 @@ import {
   FiFlag,
   FiTrash2,
 } from "react-icons/fi";
+import { FileAction } from '@/types';
 
 interface FolderActionsDropdownProps {
-  onAction: (action: string) => void;
+  onAction: (action: FileAction) => void;
+  disabled?: boolean;
 }
 
-const FolderActionsDropdown: React.FC<FolderActionsDropdownProps> = ({
-  onAction,
-}) => {
-  const menuOptions = [
-    {
-      label: "Share folder",
-      icon: <FiShare />,
-      action: "share",
-    },
-    {
-      label: "Move to",
-      icon: <FiMove />,
-      action: "move",
-    },
-    {
-      label: "Add to starred",
-      icon: <FiStar />,
-      action: "star",
-    },
-    {
-      label: "Rename",
-      icon: <FiEdit3 />,
-      action: "rename",
-    },
-    {
-      label: "Download",
-      icon: <FiDownload />,
-      action: "download",
-    },
-    {
-      label: "Report",
-      icon: <FiFlag />,
-      action: "report",
-    },
-    {
-      label: "Delete",
-      icon: <FiTrash2 />,
-      action: "delete",
-      className: "text-red-500 hover:text-red-600",
-    },
-  ];
+const menuOptions: { label: string; icon: JSX.Element; action: FileAction; className?: string }[] = [
+  {
+    label: "Share folder",
+    icon: <FiShare />,
+    action: "share" as FileAction,
+  },
+  {
+    label: "Move to",
+    icon: <FiMove />,
+    action: "move" as FileAction,
+  },
+  {
+    label: "Add to starred",
+    icon: <FiStar />,
+    action: "star" as FileAction,
+  },
+  {
+    label: "Rename",
+    icon: <FiEdit3 />,
+    action: "rename" as FileAction,
+  },
+  {
+    label: "Download",
+    icon: <FiDownload />,
+    action: "download" as FileAction,
+  },
+  {
+    label: "Report",
+    icon: <FiFlag />,
+    action: "report" as FileAction,
+  },
+  {
+    label: "Delete",
+    icon: <FiTrash2 />,
+    action: "delete" as FileAction,
+    className: "text-red-500 hover:text-red-600",
+  },
+];
 
+const FolderActionsDropdown: React.FC<FolderActionsDropdownProps> = ({ onAction, disabled }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="text-sm font-medium">
+        <Button variant="ghost" className="text-sm font-medium" disabled={disabled}>
           •••
         </Button>
       </DropdownMenuTrigger>

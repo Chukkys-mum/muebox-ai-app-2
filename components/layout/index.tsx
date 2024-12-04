@@ -1,3 +1,5 @@
+// /components/layout/index.tsx
+
 import Footer from '@/components/footer/FooterAdmin';
 import Navbar from '@/components/navbar/NavbarAdmin';
 import { routes } from '@/components/routes';
