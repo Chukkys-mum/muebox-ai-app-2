@@ -136,7 +136,7 @@
     "shadcn-ui": "^0.2.3",
     "sonner": "^1.7.0",
     "stream-browserify": "^3.0.0",
-    "stripe": "^15.8.0",
+    "stripe": "^17.4.0",
     "swr": "^2.2.5",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
