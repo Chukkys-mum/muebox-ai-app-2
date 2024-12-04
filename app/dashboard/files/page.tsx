@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import FileTable from '@/components/dashboard/files/FileTable';
 import { FileService } from '@/services/files/FileService';
-import { FileRow } from '@/types/FileTypes';
+import { FileRow } from '@/types';
 
 // Define fileColumns
 const fileColumns: Array<{ key: keyof FileRow; label: string }> = [

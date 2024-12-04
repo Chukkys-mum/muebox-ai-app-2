@@ -160,7 +160,7 @@ const EmailLayout: FC<EmailLayoutProps> = ({ children, page }) => {
             <div className="flex-1 mx-4 max-w-xl">
               <Search 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(value) => setSearchQuery(value)}
                 placeholder="Search emails... (⌘ + /)"
               />
             </div>

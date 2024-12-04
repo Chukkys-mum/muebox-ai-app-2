@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import FileActionsDropdown from "./FileActionsDropdown";
-import { FileRow, FileTableProps } from "@/types/FileTypes";
+import { FileRow, FileTableProps } from "@/types";
 
 const FileTable: React.FC<FileTableProps> = ({ data, onDelete, isLoading, config }) => {
   const [searchQuery, setSearchQuery] = useState("");

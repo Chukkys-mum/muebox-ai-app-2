@@ -1,19 +1,20 @@
 // app/dashboard/time-machine/archive/page.tsx
 
 import React, { useEffect, useState } from "react";
-import { ArchiveService } from "@/utils/services/ArchiveService";
+import { archiveService } from "@/services/time-machine/ArchiveService";
+import { IArchiveService } from "@/services/time-machine/types";
 
 // Define types for archive files and storage usage
 type ArchivedFile = {
   id: string;
   name: string;
-  size: number; // File size in MB
-  updatedAt: string; // ISO date string
+  size: number;
+  updatedAt: string;
 };
 
 type StorageUsage = {
-  used: number; // Used storage in GB
-  total: number; // Total storage in GB
+  used: number;
+  total: number;
 };
 
 const Archive = () => {
@@ -31,19 +32,24 @@ const Archive = () => {
       try {
         setLoading(true);
 
-        const [files, storage] = await Promise.all([
-          ArchiveService.getArchivedFiles(),
-          ArchiveService.getStorageUsage(),
+        const [filesData, storage] = await Promise.all([
+          archiveService.getArchivedFiles(),
+          archiveService.getStorageUsage(),
         ]);
 
         // Transform files to include the `updatedAt` property if it's missing
-        const transformedFiles: ArchivedFile[] = files.map((file) => ({
-          ...file,
-          updatedAt: file.updatedAt || new Date().toISOString(), // Provide a default if missing
+        const transformedFiles: ArchivedFile[] = filesData.files.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: file.file_size,
+          updatedAt: file.updated_at || new Date().toISOString(),
         }));
 
         setArchiveFiles(transformedFiles);
-        setStorageUsage(storage);
+        setStorageUsage({
+          used: storage.used,
+          total: storage.total,
+        });
         setError(null);
       } catch (err) {
         console.error("Error fetching archive data:", err);

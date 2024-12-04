@@ -8,7 +8,7 @@ import {
   SafeguardFolder,
   FileRow,
   FileCategory
-} from '@/types/FileTypes';
+} from '@/types';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import ArchiveService, { ArchiveService as ArchiveServiceClass } from '../time-machine/ArchiveService';
 

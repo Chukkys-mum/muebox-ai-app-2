@@ -9,7 +9,7 @@ import {
   FileOperationResult,
   FileStorageUsage,
   FileSettings
-} from "@/types/FileTypes";
+} from "@/types";
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import { logger } from '@/utils/logger';
 
@@ -43,12 +43,16 @@ export class FileService extends BaseService {
         .from("file_settings")
         .select("*")
         .single();
-
+  
       if (error) throw error;
-
+  
+      if (!data) return null;
+  
       return {
+        id: data.id,
         maxFileSize: data.max_file_size,
-        allowedFileTypes: data.allowed_file_types || []
+        allowedFileTypes: data.allowed_file_types || [],
+        updated_at: data.updated_at
       };
     } catch (err) {
       console.error('getFileSettings:', err);
@@ -56,16 +60,77 @@ export class FileService extends BaseService {
     }
   }
 
-  async updateFileSettings(settings: FileSettings): Promise<boolean> {
+  async getArchivedFiles(page: number = 1, limit: number = 10): Promise<{ files: FileRow[], total: number }> {
+    try {
+      const start = (page - 1) * limit;
+      const end = start + limit - 1;
+  
+      const { data, error, count } = await this.supabase
+        .from('files')
+        .select('*', { count: 'exact' })
+        .eq('status', 'archived')
+        .order('archived_at', { ascending: false })
+        .range(start, end);
+  
+      if (error) throw error;
+  
+      return {
+        files: data?.map(file => this.transformDatabaseFile(file)) || [],
+        total: count || 0
+      };
+    } catch (err) {
+      console.error('getArchivedFiles:', err);
+      return { files: [], total: 0 };
+    }
+  }
+  
+  async getArchivedStorageUsage(): Promise<FileStorageUsage> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_archived_storage_usage') as PostgrestSingleResponse<{
+        used_space: number;
+        total_space: number;
+        storage_breakdown: Record<string, number>;
+      }>;
+  
+      if (error) throw error;
+  
+      return {
+        used: data?.used_space || 0,
+        total: data?.total_space || 0,
+        breakdown: data?.storage_breakdown || {}
+      };
+    } catch (err) {
+      console.error("getArchivedStorageUsage:", err);
+      return { used: 0, total: 0, breakdown: {} };
+    }
+  }
+  
+  async restoreFromArchive(fileId: string): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update({ 
+          status: 'active' as FileStatus,
+          archived_at: null
+        })
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'File restored successfully'
+    );
+  }
+
+  async updateFileSettings(settings: Partial<FileSettings>): Promise<boolean> {
     try {
       const { error } = await this.supabase
         .from("file_settings")
         .update({
           max_file_size: settings.maxFileSize,
-          allowed_file_types: settings.allowedFileTypes
+          allowed_file_types: settings.allowedFileTypes,
+          // Don't update id or updated_at, they should be handled by the database
         })
-        .eq("id", 1);
-
+        .eq("id", settings.id);
+  
       if (error) throw error;
       return true;
     } catch (err) {
@@ -273,4 +338,4 @@ async getFolderDownloadLink(folderId: string): Promise<string> {
 }
 
 // Export the FileService class
-export default FileService;
+export const fileService = new FileService();

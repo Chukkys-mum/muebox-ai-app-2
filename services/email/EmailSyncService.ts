@@ -63,6 +63,25 @@ export class EmailSyncService {
     }
   }
 
+  syncAllAccounts = async (userId: string): Promise<void> => {
+    try {
+      const { data: accounts } = await this.supabase
+        .from('email_accounts')
+        .select('*')
+        .eq('user_id', userId);
+  
+      if (!accounts) return;
+  
+      await Promise.all(
+        accounts.map(account => this.syncEmails(account.id, userId))
+      );
+  
+    } catch (error) {
+      console.error('Failed to sync all accounts:', error);
+      throw error;
+    }
+  };
+
   syncEmails = async (accountId: string, userId: string): Promise<void> => {
     const account = await this.getEmailAccount(accountId);
 

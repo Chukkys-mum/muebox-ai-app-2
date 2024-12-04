@@ -10,7 +10,7 @@ import {
   SubscriptionContext
   // UserContext,
   // UserDetailsContext
-} from '@/contexts/layout';
+} from '@/context/layout';
 import modalImagedark from '@/public/img/dark/modal/modal.png';
 import modalImage from '@/public/img/light/modal/modal.png';
 import SidebarImage from '@/public/SidebarBadge.png';

@@ -2,7 +2,8 @@
 
 import { EmailProvider, EmailMessage, AuthTokens, EmailProviderConfig } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { AIService } from '@/services/ai/AIService'; // Adjust the import path as needed
+import { AIService } from '@/services/email/AIService';
+import { EmailData } from '@/types';
 
 export class OutlookProvider extends EmailProvider {
   private baseUrl = 'https://graph.microsoft.com/v1.0/me';
@@ -63,8 +64,8 @@ export class OutlookProvider extends EmailProvider {
         user_id: userId,
         subject: email.subject,
         body: email.body,
-        sender: email.sender,
-        recipients: email.recipients,
+        sender: JSON.stringify(email.sender),
+        recipient: JSON.stringify(email.recipients),
         timestamp: email.timestamp,
         html_body: email.htmlBody,
         is_read: email.isRead,
@@ -72,8 +73,20 @@ export class OutlookProvider extends EmailProvider {
         unread: email.unread
       });
   
-      // Process for AI training
-      await this.aiService.processEmailForTraining(email, userId);
+      const emailData: EmailData = {
+        id: email.id,
+        user_id: userId,
+        email_account_id: accountId,
+        subject: email.subject,
+        sender: JSON.stringify(email.sender),
+        recipient: email.recipients,
+        email_body: email.body,
+        status: 'pending',
+        created_at: email.timestamp.toISOString(),
+        updated_at: new Date().toISOString()
+      };
+  
+      await this.aiService.processEmailForTraining(emailData, userId);
     } catch (error) {
       console.error('Failed to process and store email:', error);
       throw error;

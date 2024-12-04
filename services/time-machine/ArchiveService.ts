@@ -7,7 +7,7 @@ import {
   FileCategory,
   FileRow,
   FileStorageUsage
-} from "@/types/FileTypes";
+} from "@/types";
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import { IArchiveService } from './types';  // Add this import
 
@@ -259,4 +259,4 @@ export class ArchiveService extends FileService implements IArchiveService {
   }
 }
 
-export const archiveService: IArchiveService = new ArchiveService();
+export const archiveService = new ArchiveService();

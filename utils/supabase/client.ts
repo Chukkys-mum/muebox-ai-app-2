@@ -1,5 +1,6 @@
 // utils/supabase/client.ts
-import { Database } from '@/types/supabase';
+// import { Database } from '@/types/supabase';
+import { Database } from '@/types/types_db';
 import { createBrowserClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
 

@@ -15,7 +15,7 @@ import {
   SubscriptionContext,
   UserContext,
   UserDetailsContext
-} from '@/contexts/layout';
+} from '@/context/layout';
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];

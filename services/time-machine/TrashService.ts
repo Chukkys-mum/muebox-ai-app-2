@@ -1,7 +1,7 @@
 // /services/time-machine/TrashService.ts
 
 import { supabase } from "@/utils/supabase/client";
-import { FileRow, FileStatus, FileCategory, CompatibleFileRow } from "@/types/FileTypes";
+import { FileRow, FileStatus, FileCategory, CompatibleFileRow } from "@/types";
 import { Database } from '@/types/types_db';
 import { BaseService } from '../BaseService';
 

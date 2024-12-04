@@ -1,8 +1,8 @@
 // components/dashboard/time-machine/Archive.tsx
 
 import React, { useState, useEffect } from "react";
-import { FileRow } from "@/types/FileTypes";
-import { FileService } from "@/services/files/FileService";
+import { FileRow } from "@/types";
+import { fileService } from "@/services/files/FileService";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArchiveTable } from "./ArchiveTable";
@@ -27,8 +27,8 @@ const Archive: React.FC = () => {
 
       // Fetch both archived files and storage usage in parallel
       const [filesData, usage] = await Promise.all([
-        FileService.getArchivedFiles(currentPage, 10),
-        FileService.getArchivedStorageUsage()
+        fileService.getArchivedFiles(currentPage, 10),
+        fileService.getArchivedStorageUsage()
       ]);
 
       setArchivedFiles(filesData.files);
@@ -47,11 +47,11 @@ const Archive: React.FC = () => {
 
   const handleRestore = async (fileId: string) => {
     try {
-      const success = await FileService.restoreFromArchive(fileId);
+      const success = await fileService.restoreFromArchive(fileId);
       if (success) {
         setArchivedFiles((prev) => prev.filter((file) => file.id !== fileId));
         // Refresh storage usage after restoration
-        const usage = await FileService.getArchivedStorageUsage();
+        const usage = await fileService.getArchivedStorageUsage();
         setStorageUsage(usage);
       } else {
         setError("Failed to restore file.");
@@ -64,11 +64,11 @@ const Archive: React.FC = () => {
 
   const handleDelete = async (fileId: string) => {
     try {
-      const success = await FileService.deleteFile(fileId);
+      const success = await fileService.deleteFile(fileId);
       if (success) {
         setArchivedFiles((prev) => prev.filter((file) => file.id !== fileId));
         // Refresh storage usage after deletion
-        const usage = await FileService.getArchivedStorageUsage();
+        const usage = await fileService.getArchivedStorageUsage();
         setStorageUsage(usage);
       } else {
         setError("Failed to delete file permanently.");

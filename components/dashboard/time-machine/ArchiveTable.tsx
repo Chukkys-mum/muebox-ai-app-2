@@ -1,6 +1,7 @@
 // components/dashboard/time-machine/ArchiveTable.tsx
+
 import React, { useState } from "react";
-import { FileRow } from "@/types/FileTypes";
+import { FileRow } from "@/types";
 import { Button } from "@/components/ui/button";
 import { formatFileSize } from "@/utils/formatters"; // We'll need to create this
 
@@ -83,7 +84,7 @@ export const ArchiveTable: React.FC<ArchiveTableProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {file.name}
+                      {file.file_name}
                     </span>
                   </div>
                 </td>
@@ -96,7 +97,7 @@ export const ArchiveTable: React.FC<ArchiveTableProps> = ({
                   {file.category || file.type || 'Unknown'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {formatDate(file.archived_at || file.modified_at)}
+                  {formatDate(file.archived_at || file.updated_at)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">

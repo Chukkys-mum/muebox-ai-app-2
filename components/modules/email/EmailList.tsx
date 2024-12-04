@@ -3,49 +3,43 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Archive,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCcw,
-  Star,
-  Tags,
-  Trash2,
-} from "lucide-react";
-import { format } from "date-fns";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import InboxToolbar from "@/components/modules/email/InboxToolbar";
+import { useEmailPagination } from "@/hooks/useEmailPagination";
+import { useEmailRefresh } from "@/hooks/useEmailRefresh";
+import { useEmail } from "@/context/EmailContext";
+import { Email } from "@/types/email";
 import { cn } from "@/utils/cn";
-
-interface Email {
-  id: string;
-  subject: string;
-  sender: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
-  excerpt: string;
-  timestamp: Date;
-  read: boolean;
-  starred: boolean;
-  attachments?: {
-    name: string;
-    size: string;
-    type: string;
-  }[];
-}
+import { format } from "date-fns";
+import { useRouter } from "next/navigation";
+import {
+  Star,
+  Paperclip
+} from "lucide-react";
 
 interface EmailListProps {
-  emails: Email[];
+  initialEmails: Email[];
+  totalEmails: number;
 }
 
-export default function EmailList({ emails }: EmailListProps) {
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
-  
+export default function EmailList({ initialEmails, totalEmails }: EmailListProps) {
+  const router = useRouter();
+  const { selectedEmails, selectEmails } = useEmail();
+  const setSelectedEmails = (emails: Set<string>) => selectEmails(emails);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+
+  const { 
+    emails, 
+    loading: paginationLoading,
+    error: paginationError
+  } = useEmailPagination(initialEmails);
+
+  const { 
+    refresh, 
+    lastRefreshed,
+    refreshing  
+  } = useEmailRefresh();
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedEmails(new Set(emails.map(email => email.id)));
@@ -64,64 +58,38 @@ export default function EmailList({ emails }: EmailListProps) {
     setSelectedEmails(newSelected);
   };
 
+  const handleEmailClick = (email: Email) => {
+    router.push(`/dashboard/email/${email.id}`);
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="border-b p-2 flex items-center justify-between sticky top-0 bg-background z-10">
-        <div className="flex items-center gap-2">
-          <Checkbox 
-            checked={selectedEmails.size === emails.length}
-            onCheckedChange={handleSelectAll}
-          />
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => window.location.reload()}
-          >
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
-          <div className="text-sm text-muted-foreground">
-            Last refreshed {format(new Date(), 'h:mm a')}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>1-50 of 234</span>
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <InboxToolbar 
+        selectedCount={selectedEmails.size}
+        totalEmails={totalEmails}
+        currentPage={currentPage}
+        totalPages={Math.ceil(totalEmails / pageSize)}
+        onSelectAll={handleSelectAll}
+        onRefresh={refresh}
+        onPreviousPage={() => setCurrentPage(p => Math.max(1, p - 1))}
+        onNextPage={() => setCurrentPage(p => p + 1)}
+        onArchive={() => console.log('Archive')}
+        onDelete={() => console.log('Delete')}
+        onStar={() => console.log('Star')}
+        onTag={() => console.log('Tag')}
+      />
 
-      {/* Action bar */}
-      {selectedEmails.size > 0 && (
-        <div className="border-b p-2 flex items-center gap-2 bg-muted/50">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Archive className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Archive</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Delete</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Tags className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Label</TooltipContent>
-          </Tooltip>
+      {/* Loading State */}
+      {(paginationLoading || refreshing) && (
+        <div className="flex justify-center p-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      )}
+
+      {/* Error State */}
+      {paginationError && (
+        <div className="text-destructive text-center p-4">
+          Failed to load emails. Please try again.
         </div>
       )}
 
@@ -133,6 +101,7 @@ export default function EmailList({ emails }: EmailListProps) {
             email={email}
             selected={selectedEmails.has(email.id)}
             onSelect={(checked) => handleSelectEmail(email.id, checked)}
+            onClick={() => handleEmailClick(email)}
           />
         ))}
       </div>
@@ -144,15 +113,19 @@ interface EmailRowProps {
   email: Email;
   selected: boolean;
   onSelect: (checked: boolean) => void;
+  onClick: () => void;
 }
 
-function EmailRow({ email, selected, onSelect }: EmailRowProps) {
+function EmailRow({ email, selected, onSelect, onClick }: EmailRowProps) {
   return (
-    <div className={cn(
-      "flex items-center gap-4 p-4 border-b hover:bg-muted/50 cursor-pointer",
-      !email.read && "font-medium",
-      selected && "bg-muted"
-    )}>
+    <div 
+      className={cn(
+        "flex items-center gap-4 p-4 border-b hover:bg-muted/50 cursor-pointer",
+        !email.read_at && "font-medium",  
+        selected && "bg-muted"
+    )}
+      onClick={onClick}
+    >
       <Checkbox 
         checked={selected}
         onCheckedChange={onSelect}
@@ -162,7 +135,10 @@ function EmailRow({ email, selected, onSelect }: EmailRowProps) {
         variant="ghost" 
         size="icon"
         className="text-muted-foreground"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          // TODO: Implement star functionality
+        }}
       >
         <Star className={cn(
           "h-4 w-4",
@@ -177,11 +153,16 @@ function EmailRow({ email, selected, onSelect }: EmailRowProps) {
           </span>
         </div>
         <div className="text-sm text-muted-foreground truncate">
-          {email.excerpt}
+          {email.body}
         </div>
       </div>
-      <div className="text-sm text-muted-foreground whitespace-nowrap">
-        {format(email.timestamp, 'MMM d')}
+      <div className="flex items-center gap-2">
+        {email.attachments && email.attachments.length > 0 && (
+          <Paperclip className="h-4 w-4 text-muted-foreground" />
+        )}
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
+          {format(new Date(email.read_at || email.created_at), 'MMM d')}   
+        </div>
       </div>
     </div>
   );

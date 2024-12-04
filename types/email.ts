@@ -1,6 +1,6 @@
 // types/email.ts
 
-import { WithTimestamps, WithStatus, Status } from '@/types/types';
+import { WithTimestamps, WithStatus, Status } from './common';
 import { Json } from '@/types/types_db';
 
 export type EmailStatus = 'pending' | 'analyzed' | 'deleted';
@@ -12,6 +12,24 @@ export interface EmailAttachment {
   size: number;
   format: string;
   file_path?: string | null;
+  type: string;
+}
+
+export interface Email {
+  id: string;
+  user_id: string;
+  email_account_id: string;
+  subject: string;
+  sender: EmailSender;
+  recipients: EmailRecipient[];
+  body: string;
+  status: EmailStatus;
+  attachments?: EmailAttachment[];
+  read_at?: string | null;
+  starred?: boolean;
+  labels?: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 // Updated EmailAccount interface
@@ -38,30 +56,19 @@ export interface EmailRecipient {
   type: 'to' | 'cc' | 'bcc';
 }
 
-// Core email interface aligning with DB schema and UI needs
+// Core email interface aligning with DB schema and UI needs / // Database email interface
 export interface EmailData extends WithTimestamps {
-    id: string;
-    user_id: string;
-    email_account_id: string;
-    subject: string | null;
-    sender: string | null;
-    recipient: Json | null;
-    email_body: string | null;
-    status: EmailStatus;
-  }
-
-// Enhanced Email interface for UI usage
-export interface Email extends Omit<EmailData, 'sender' | 'recipient' | 'email_body'> {
-  sender: EmailSender;
-  recipients: EmailRecipient[];
-  body: string;
-  attachments?: EmailAttachment[];
-  read_at?: string | null;
-  starred?: boolean;
-  labels?: string[];
+  id: string;
+  user_id: string;
+  email_account_id: string;
+  subject: string | null;
+  sender: string | null;
+  recipient: Json | null;
+  email_body: string | null;
+  status: EmailStatus;
+  created_at: string;
+  updated_at: string;
 }
-
-
 
 // Interface for email analysis
 export interface EmailAnalysis extends WithTimestamps, WithStatus {
@@ -78,12 +85,16 @@ export const transformEmailData = (data: EmailData): Email => {
   const senderData = typeof data.sender === 'string' 
     ? JSON.parse(data.sender) 
     : data.sender;
+
   const recipientData = typeof data.recipient === 'string'
     ? JSON.parse(data.recipient)
     : data.recipient;
 
   return {
-    ...data,
+    id: data.id,
+    user_id: data.user_id,
+    email_account_id: data.email_account_id,
+    subject: data.subject || '',
     sender: {
       name: senderData?.name || 'Unknown',
       email: senderData?.email || '',
@@ -91,9 +102,12 @@ export const transformEmailData = (data: EmailData): Email => {
     },
     recipients: Array.isArray(recipientData) ? recipientData : [],
     body: data.email_body || '',
-    attachments: [],  // Populate this based on your attachments data
+    status: data.status,
+    attachments: [],
     read_at: null,
     starred: false,
-    labels: []
+    labels: [],
+    created_at: data.created_at,
+    updated_at: data.updated_at
   };
 };

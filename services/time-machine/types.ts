@@ -1,6 +1,6 @@
 // services/time-machine/types.ts
 
-import { FileOperationResult, FileCategory, FileRow, FileStorageUsage } from "@/types/FileTypes";
+import { FileOperationResult, FileCategory, FileRow, FileStorageUsage } from "@/types";
 
 export interface IArchiveService {
   getArchivedFiles(page?: number, limit?: number): Promise<{ files: (FileRow & { category: FileCategory })[]; total: number }>;

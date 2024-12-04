@@ -1,7 +1,7 @@
 // /components/dashboard/time-machine/TrashcanTable.tsx
 
 import React from "react";
-import { FileRow } from "@/types/FileTypes";
+import { FileRow } from "@/types";
 
 interface TrashcanTableProps {
   data: FileRow[];

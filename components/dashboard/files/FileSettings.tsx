@@ -1,19 +1,24 @@
 // /components/dashboard/files/FileSettings.tsx
 
 import React, { useState, useEffect } from "react";
-import { FileService } from "@/services/files/FileService";
+import FileService from "@/services/files/FileService";
+import { FileSettings as FileSettingsType } from "@/types";
 
 const FileSettings = () => {
-  const [settings, setSettings] = useState<{ maxFileSize: number; allowedFileTypes: string[] }>({
-    maxFileSize: 10, // Default: 10 MB
-    allowedFileTypes: ["jpg", "png", "pdf", "docx"], // Default types as an array
+  const fileService = new FileService();
+  
+  const [settings, setSettings] = useState<FileSettingsType>({
+    id: 0,
+    maxFileSize: 10,
+    allowedFileTypes: ["jpg", "png", "pdf", "docx"],
+    updated_at: new Date().toISOString(),
   });
 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const data = await FileService.getFileSettings();
+      const data = await fileService.getFileSettings();
       if (data) setSettings(data);
     };
     fetchSettings();
@@ -24,13 +29,20 @@ const FileSettings = () => {
 
     setSettings((prev) => ({
       ...prev,
-      [name]: name === "allowedFileTypes" ? value.split(",").map((type) => type.trim()) : value,
+      [name]: name === "allowedFileTypes" 
+        ? value ? value.split(",").map((type) => type.trim()) : null
+        : name === "maxFileSize" ? (value ? Number(value) : null) : value,
     }));
   };
 
   const saveSettings = async () => {
     setIsSaving(true);
-    await FileService.updateFileSettings(settings);
+    const success = await fileService.updateFileSettings(settings);
+    if (success) {
+      // Optionally, show a success message
+    } else {
+      // Optionally, show an error message
+    }
     setIsSaving(false);
   };
 
@@ -45,7 +57,7 @@ const FileSettings = () => {
           <input
             type="number"
             name="maxFileSize"
-            value={settings.maxFileSize}
+            value={settings.maxFileSize ?? ''}
             onChange={handleInputChange}
             className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
           />
@@ -58,7 +70,7 @@ const FileSettings = () => {
           <input
             type="text"
             name="allowedFileTypes"
-            value={settings.allowedFileTypes.join(", ")} // Convert array to a comma-separated string for display
+            value={settings.allowedFileTypes ? settings.allowedFileTypes.join(", ") : ''}
             onChange={handleInputChange}
             className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
           />

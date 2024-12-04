@@ -9,7 +9,7 @@ import {
   FilePermissions,
   FileOperationResult,
   FileStorageUsage
-} from "@/types/FileTypes";
+} from "@/types";
 import { getFileCategory } from "@/utils/FileUtils";
 import { PostgrestSingleResponse, SupabaseClient } from '@supabase/supabase-js';
 

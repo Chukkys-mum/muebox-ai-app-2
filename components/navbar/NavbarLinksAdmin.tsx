@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { OpenContext, UserContext } from '@/contexts/layout';
+import { OpenContext, UserContext } from '@/context/layout';
 import { handleRequest } from '@/utils/auth-helpers/client';
 import { SignOut } from '@/utils/auth-helpers/server';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';

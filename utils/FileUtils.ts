@@ -1,6 +1,6 @@
 // /utils/FileUtils.ts
 
-import { FileRow } from "@/types/FileTypes"; // Adjust the path to where FileTypes is located
+import { FileRow } from "@/types"; // Adjust the path to where files is located
 
 /**
  * Utility function to categorize a file based on its extension.

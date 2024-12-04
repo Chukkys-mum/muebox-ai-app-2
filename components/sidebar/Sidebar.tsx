@@ -13,7 +13,7 @@ import {
   OpenContext,
   UserContext,
   UserDetailsContext
-} from '@/contexts/layout';
+} from '@/context/layout';
 import { IRoute } from '@/types/types';
 import { Database } from '@/types/types_db';
 import { handleRequest } from '@/utils/auth-helpers/client';

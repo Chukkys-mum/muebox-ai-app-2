@@ -1064,6 +1064,7 @@ export interface Database {
           status: Database['public']['Enums']['email_status'];
           created_at: string;
           updated_at: string;
+          metadata: Json;
         };
         Insert: {
           id?: string;
@@ -1076,6 +1077,7 @@ export interface Database {
           status?: Database['public']['Enums']['email_status'];
           created_at?: string;
           updated_at?: string;
+          metadata: Json;
         };
         Update: {
           id?: string;
@@ -1088,6 +1090,7 @@ export interface Database {
           status?: Database['public']['Enums']['email_status'];
           created_at?: string;
           updated_at?: string;
+          metadata: Json;
         };
         Relationships: [
           {
@@ -2262,6 +2265,7 @@ export interface Database {
       [_ in never]: never;
     };
   };
+}
   
 export interface DatabaseTTS {
   public: {

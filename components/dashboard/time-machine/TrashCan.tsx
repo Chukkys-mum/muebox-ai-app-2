@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import TrashService from "@/services/time-machine/TrashService";
 import { TrashcanTable } from "./TrashcanTable";
-import { FileRow } from "@/types/FileTypes"; 
+import { FileRow } from "@/types"; 
 
 interface TrashCanProps {
   userId: string;

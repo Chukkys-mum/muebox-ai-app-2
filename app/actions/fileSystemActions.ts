@@ -3,7 +3,7 @@
 'use server'
 
 import { FileService } from '@/services/files/FileService';
-import type { FileOperationResult } from '@/types/FileTypes';
+import type { FileOperationResult } from '@/types';
 
 interface ActionParams {
   newName?: string;

@@ -1,17 +1,14 @@
 // /types/template/types.ts
-// - types.ts (template type definitions)
 
+import { WithTimestamps, WithStatus } from '../common';
 import { JSONSchema7 } from 'json-schema';
 import { LLMPreferences } from '../llm/scope';
 import { LLMModelParams } from '../llm/config';
+import { Json } from '../types_db';
 
-export type TemplateCategory = 
-  | 'chat'
-  | 'essay'
-  | 'analysis'
-  | 'code'
-  | 'creative'
-  | 'custom';
+// Core types
+export type TemplateCategory = 'chat' | 'essay' | 'analysis' | 'code' | 'creative' | 'custom';
+export type TemplateStatus = 'active' | 'archived' | 'deleted' | 'draft';
 
 export type OutputFormat = {
   type: 'text' | 'json' | 'markdown' | 'html' | 'code';
@@ -23,36 +20,17 @@ export type OutputFormat = {
   };
 };
 
-export type PreprocessingRule = {
+// Domain Models with proper type inheritance
+export interface Template extends WithTimestamps, WithStatus {
   id: string;
-  type: 'transform' | 'validate' | 'enrich';
-  condition?: string;
-  action: string;
-  order: number;
-};
-
-export type PostprocessingRule = {
-  id: string;
-  type: 'format' | 'filter' | 'transform';
-  condition?: string;
-  action: string;
-  order: number;
-};
-
-export type ValidationRule = {
-  id: string;
-  field: string;
-  type: 'required' | 'format' | 'range' | 'custom';
-  condition: string;
-  message: string;
-};
-
-export interface Template {
-  id: string;
-  version: string;
   name: string;
   description: string;
   category: TemplateCategory;
+  version: string;
+  user_id: string;
+  archived: boolean;
+  
+  // Complex objects (stored as JSON in DB)
   metadata: {
     author: string;
     created: Date;
@@ -61,66 +39,173 @@ export interface Template {
     isPublic: boolean;
     usageCount: number;
   };
+  
   configuration: {
     inputSchema: JSONSchema7;
     outputFormat: OutputFormat;
     llmPreferences: LLMPreferences;
     defaultParams: LLMModelParams;
   };
+  
   prompts: {
     main: string;
     followUp?: string[];
     fallback?: string[];
     variables?: string[];
   };
-  preprocessing?: PreprocessingRule[];
-  postprocessing?: PostprocessingRule[];
+  
   validation: ValidationRule[];
 }
 
+// Database Compatible Models
+export interface DbTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string; // Note: string type to match DB
+  version: string;
+  user_id: string;
+  metadata: Json;
+  configuration: Json;
+  prompts: Json;
+  validation: Json;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+}
+
+// Template Usage matching DB schema
 export interface TemplateUsage {
   id: string;
-  templateId: string;
-  userId: string;
-  timestamp: Date;
-  inputs: Record<string, any>;
-  result: {
-    success: boolean;
-    output?: any;
-    error?: string;
-  };
-  metrics: {
-    processingTime: number;
-    tokensUsed: number;
-    cost: number;
-  };
+  template_id: string;
+  user_id: string;
+  timestamp: string;
+  inputs: Json;
+  result: Json;
+  metrics: Json;
 }
 
+// Template Versions matching DB schema
 export interface TemplateVersion {
-  templateId: string;
+  id: string;
+  template_id: string;
   version: string;
-  changes: string[];
-  createdAt: Date;
-  createdBy: string;
-  template: Template;
+  changes: Json;
+  template_data: Json;
+  created_at: string;
+  created_by: string;
 }
 
-export type TemplateSearchParams = {
-  category?: TemplateCategory;
-  tags?: string[];
-  author?: string;
-  isPublic?: boolean;
-  query?: string;
+// Rest of your types...
+export type ValidationRule = {
+  id: string;
+  field: string;
+  type: 'required' | 'format' | 'range' | 'custom';
+  condition: string;
+  message: string;
 };
 
-export interface TemplateManagerInterface {
-  createTemplate(template: Omit<Template, 'id'>): Promise<Template>;
-  getTemplate(id: string, version?: string): Promise<Template | null>;
-  updateTemplate(id: string, updates: Partial<Template>): Promise<Template>;
-  deleteTemplate(id: string): Promise<boolean>;
-  listTemplates(params?: TemplateSearchParams): Promise<Template[]>;
-  validateTemplate(template: Template): Promise<boolean>;
-  exportTemplate(id: string): Promise<string>;
-  importTemplate(data: string): Promise<Template>;
-  getTemplateUsage(id: string): Promise<TemplateUsage[]>;
+// Type safe conversion functions
+function serializeToJson<T>(obj: T): Json {
+  return JSON.parse(JSON.stringify(obj)) as Json;
+}
+
+// Type Conversion Utilities with proper typing
+export function domainToDb(template: Template): DbTemplate {
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    category: template.category,
+    version: template.version,
+    user_id: template.user_id,
+    // Use serializeToJson for complex objects
+    metadata: serializeToJson({
+      author: template.metadata.author,
+      created: template.metadata.created.toISOString(),
+      modified: template.metadata.modified.toISOString(),
+      tags: template.metadata.tags,
+      isPublic: template.metadata.isPublic,
+      usageCount: template.metadata.usageCount
+    }),
+    configuration: serializeToJson({
+      inputSchema: template.configuration.inputSchema,
+      outputFormat: template.configuration.outputFormat,
+      llmPreferences: template.configuration.llmPreferences,
+      defaultParams: template.configuration.defaultParams
+    }),
+    prompts: serializeToJson({
+      main: template.prompts.main,
+      followUp: template.prompts.followUp,
+      fallback: template.prompts.fallback,
+      variables: template.prompts.variables
+    }),
+    validation: serializeToJson(template.validation),
+    created_at: template.created_at,
+    updated_at: template.updated_at,
+    archived: template.archived
+  };
+}
+
+export function dbToDomain(dbTemplate: DbTemplate): Template {
+  // Parse JSON strings back to objects
+  const metadata = typeof dbTemplate.metadata === 'string' 
+    ? JSON.parse(dbTemplate.metadata) 
+    : dbTemplate.metadata;
+  const configuration = typeof dbTemplate.configuration === 'string'
+    ? JSON.parse(dbTemplate.configuration)
+    : dbTemplate.configuration;
+  const prompts = typeof dbTemplate.prompts === 'string'
+    ? JSON.parse(dbTemplate.prompts)
+    : dbTemplate.prompts;
+  const validation = typeof dbTemplate.validation === 'string'
+    ? JSON.parse(dbTemplate.validation)
+    : dbTemplate.validation;
+
+  return {
+    ...dbTemplate,
+    status: 'active',
+    category: dbTemplate.category as TemplateCategory,
+    metadata: {
+      author: metadata.author,
+      created: new Date(metadata.created),
+      modified: new Date(metadata.modified),
+      tags: metadata.tags,
+      isPublic: metadata.isPublic,
+      usageCount: metadata.usageCount
+    },
+    configuration: {
+      inputSchema: configuration.inputSchema,
+      outputFormat: configuration.outputFormat,
+      llmPreferences: configuration.llmPreferences,
+      defaultParams: configuration.defaultParams
+    },
+    prompts: {
+      main: prompts.main,
+      followUp: prompts.followUp,
+      fallback: prompts.fallback,
+      variables: prompts.variables
+    },
+    validation: validation
+  };
+}
+
+export interface DbTemplateUsage {
+  id: string;
+  template_id: string;
+  user_id: string;
+  timestamp: string;
+  inputs: Json;
+  result: Json;
+  metrics: Json;
+}
+
+export interface DbTemplateVersion {
+  id: string;
+  template_id: string;
+  version: string;
+  changes: Json;
+  template_data: Json;
+  created_at: string;
+  created_by: string;
 }
