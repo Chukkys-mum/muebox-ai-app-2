@@ -15,20 +15,29 @@ export interface Database {
         Row: {
           id: string;
           stripe_customer_id: string | null;
+          account_id: string; // Added to link to account
         };
         Insert: {
           id: string;
           stripe_customer_id?: string | null;
+          account_id: string;
         };
         Update: {
           id?: string;
           stripe_customer_id?: string | null;
+          account_id?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'customers_id_fkey';
             columns: ['id'];
             referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'customers_account_id_fkey';
+            columns: ['account_id'];
+            referencedRelation: 'accounts';
             referencedColumns: ['id'];
           }
         ];
@@ -47,42 +56,47 @@ export interface Database {
           trial_period_days: number | null;
           type: Database['public']['Enums']['pricing_type'] | null;
           unit_amount: number | null;
+          account_id: string; // Added to scope prices to accounts
         };
         Insert: {
           active?: boolean | null;
           currency?: string | null;
           description?: string | null;
           id: string;
-          interval?:
-            | Database['public']['Enums']['pricing_plan_interval']
-            | null;
+          interval?: Database['public']['Enums']['pricing_plan_interval'] | null;
           interval_count?: number | null;
           metadata?: Json | null;
           product_id?: string | null;
           trial_period_days?: number | null;
           type?: Database['public']['Enums']['pricing_type'] | null;
           unit_amount?: number | null;
+          account_id: string;
         };
         Update: {
           active?: boolean | null;
           currency?: string | null;
           description?: string | null;
           id?: string;
-          interval?:
-            | Database['public']['Enums']['pricing_plan_interval']
-            | null;
+          interval?: Database['public']['Enums']['pricing_plan_interval'] | null;
           interval_count?: number | null;
           metadata?: Json | null;
           product_id?: string | null;
           trial_period_days?: number | null;
           type?: Database['public']['Enums']['pricing_type'] | null;
           unit_amount?: number | null;
+          account_id?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'prices_product_id_fkey';
             columns: ['product_id'];
             referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'prices_account_id_fkey';
+            columns: ['account_id'];
+            referencedRelation: 'accounts';
             referencedColumns: ['id'];
           }
         ];
@@ -133,6 +147,8 @@ export interface Database {
           trial_end: string | null;
           trial_start: string | null;
           account_id: string;  // Changed from user_id
+          credits: number | null;
+          trial_credits?: number | null;
         };
         Insert: {
           cancel_at?: string | null;
@@ -150,6 +166,8 @@ export interface Database {
           trial_end?: string | null;
           trial_start?: string | null;
           account_id: string;  // Changed from user_id
+          credits: number | null;
+          trial_credits?: number | null;
         };
         Update: {
           cancel_at?: string | null;
@@ -166,7 +184,9 @@ export interface Database {
           status?: Database['public']['Enums']['subscription_status'] | null;
           trial_end?: string | null;
           trial_start?: string | null;
-          account_id?: string;  // Changed from user_id
+          account_id: string;  // Changed from user_id
+          credits: number | null;
+          trial_credits?: number | null;
         };
         Relationships: [
           {
@@ -176,9 +196,9 @@ export interface Database {
             referencedColumns: ['id'];
           },
           {
-            foreignKeyName: 'subscriptions_account_id_fkey';  // Updated relationship
-            columns: ['account_id'];
-            referencedRelation: 'accounts';
+            foreignKeyName: 'subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
             referencedColumns: ['id'];
           }
         ];
@@ -1519,6 +1539,8 @@ export interface Database {
           status: string;
           created_at: string;
           updated_at: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
         };
         Insert: {
           id?: string;
@@ -1545,6 +1567,8 @@ export interface Database {
           status?: string;
           created_at?: string;
           updated_at?: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
         };
         Update: {
           id?: string;
@@ -1571,6 +1595,8 @@ export interface Database {
           status?: string;
           created_at?: string;
           updated_at?: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
         };
         Relationships: [];
       };
@@ -2217,6 +2243,7 @@ export interface Database {
       };
 
     };
+    
     Views: {
       [_ in never]: never;
     };
@@ -2234,8 +2261,6 @@ export interface Database {
           };
         };
       };
-
-      // Adding `get_trash_storage_usage`
       get_trash_storage_usage: {
         Args: Record<string, never>;
         Returns: {
@@ -2266,6 +2291,12 @@ export interface Database {
     };
   };
 }
+
+// Keep all the existing type helpers
+export type Tables<...> = ...
+export type TablesInsert<...> = ...
+export type TablesUpdate<...> = ...
+export type Enums<...> = ...
   
 export interface DatabaseTTS {
   public: {
@@ -2301,6 +2332,7 @@ export interface DatabaseTTS {
           }
         ];
       };
+
       prices: {
         Row: {
           active: boolean | null;
@@ -2359,6 +2391,7 @@ export interface DatabaseTTS {
           }
         ];
       };
+
       products: {
         Row: {
           active: boolean | null;
@@ -2396,6 +2429,7 @@ export interface DatabaseTTS {
           }
         ];
       };
+
       subscriptions: {
         Row: {
           cancel_at: string | null;
@@ -2412,7 +2446,7 @@ export interface DatabaseTTS {
           status: Database['public']['Enums']['subscription_status'] | null;
           trial_end: string | null;
           trial_start: string | null;
-          user_id: string;
+          account_id: string;  // Changed from user_id
           credits: number | null;
           trial_credits?: number | null;
         };
@@ -2431,7 +2465,7 @@ export interface DatabaseTTS {
           status?: Database['public']['Enums']['subscription_status'] | null;
           trial_end?: string | null;
           trial_start?: string | null;
-          user_id: string;
+          account_id: string;  // Changed from user_id
           credits: number | null;
           trial_credits?: number | null;
         };
@@ -2450,7 +2484,7 @@ export interface DatabaseTTS {
           status?: Database['public']['Enums']['subscription_status'] | null;
           trial_end?: string | null;
           trial_start?: string | null;
-          user_id?: string;
+          account_id: string;  // Changed from user_id
           credits: number | null;
           trial_credits?: number | null;
         };
@@ -2469,6 +2503,7 @@ export interface DatabaseTTS {
           }
         ];
       };
+
       users: {
         Row: {
           avatar_url: string | null;
