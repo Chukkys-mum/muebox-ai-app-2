@@ -16,6 +16,8 @@ export type SubscriptionStatus =
   | 'unpaid' 
   | 'paused';
 
+  export type AccountStatus = 'trial' | 'subscriber' | 'regular';  
+
 // Generic Stripe types that we need
 export interface StripeAddress {
   city?: string | null;

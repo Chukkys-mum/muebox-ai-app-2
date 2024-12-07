@@ -22,7 +22,11 @@ import { Plus, Upload, X } from 'lucide-react';
 interface ChatScopePanelProps {
   isOpen: boolean;
   onClose: () => void;
+  chatScope: typeof chatScopeState;
+  onChatScopeChange: (newScope: Partial<typeof chatScopeState>) => void;
 }
+
+export function ChatScopePanel({ isOpen, onClose, chatScope, onChatScopeChange }: ChatScopePanelProps) {
 
 // Framing Tab Component
 function FramingTab() {
@@ -330,4 +334,5 @@ export function ChatScopePanel({ isOpen, onClose }: ChatScopePanelProps) {
       </div>
     </>
   );
+}
 }

@@ -28,10 +28,13 @@ import {
   LengthValue,
   JsonB
 } from '@/types';
+import { Input } from '@/components/ui/input';
+import { AccountStatus } from '@/types/subscription';
 
 interface FramingTabProps {
   chatScope: ChatScope;
   onChatScopeChange: (newScope: Partial<ChatScope>) => void;
+  accountStatus: AccountStatus;
 }
 
 interface FramingState {
@@ -41,10 +44,10 @@ interface FramingState {
   task: TaskValue;
   approach: ApproachValue;
   format: FormatValue;
-  length: LengthValue;
+  length: LengthValue | undefined;
 }
 
-export function FramingTab({ chatScope, onChatScopeChange }: FramingTabProps) {
+export function FramingTab({ chatScope, onChatScopeChange, accountStatus }: FramingTabProps) {
   const { selectedPreset, presets } = usePersonality();
   const [isPersonalityDrawerOpen, setIsPersonalityDrawerOpen] = useState(false);
   
@@ -55,28 +58,28 @@ export function FramingTab({ chatScope, onChatScopeChange }: FramingTabProps) {
   };
 
   const [framing, setFraming] = useState<FramingState>({
-    template: chatScope.template || '',
+    template: chatScope.template ?? '',
     context: jsonToString(chatScope.context),
-    goals: chatScope.goals || '',
-    task: chatScope.task || '',
-    approach: chatScope.approach || '',
-    format: chatScope.format || '',
-    length: chatScope.length || 500
+    goals: chatScope.goals ?? '',
+    task: chatScope.task ?? '',
+    approach: chatScope.approach ?? '',
+    format: chatScope.format ?? '',
+    length: chatScope.length
   });
 
-  const handleChange = (field: keyof FramingState, value: string | number) => {
-  if (field === 'context') {
-    const contextValue: ContextValue = value as string;
-    setFraming(prev => ({ ...prev, context: contextValue }));
-    handleContextChange(contextValue);
-  } else if (field === 'length') {
-    setFraming(prev => ({ ...prev, [field]: value as LengthValue }));
-    onChatScopeChange({ [field]: value as LengthValue });
-  } else {
-    setFraming(prev => ({ ...prev, [field]: value as string }));
-    onChatScopeChange({ [field]: value as string });
-  }
-};
+  const handleChange = (field: keyof FramingState, value: string | number | undefined) => {
+    if (field === 'context') {
+      const contextValue: ContextValue = value as string;
+      setFraming(prev => ({ ...prev, context: contextValue }));
+      handleContextChange(contextValue);
+    } else if (field === 'length') {
+      setFraming(prev => ({ ...prev, [field]: value as LengthValue | undefined }));
+      onChatScopeChange({ [field]: value as LengthValue | undefined });
+    } else {
+      setFraming(prev => ({ ...prev, [field]: value as string }));
+      onChatScopeChange({ [field]: value as string });
+    }
+  };
   
 const handleContextChange = (value: ContextValue) => {
   if (typeof value === 'string') {
@@ -88,6 +91,31 @@ const handleContextChange = (value: ContextValue) => {
     }
   } else {
     onChatScopeChange({ context: value });
+  }
+};
+
+const getMaxWordLimit = (status: AccountStatus) => {
+  switch (status) {
+    case 'trial':
+    case 'subscriber':
+      return Infinity;
+    case 'regular':
+      return 1000;
+    default:
+      return 1000;
+  }
+};
+
+// In the component:
+const maxWordLimit = getMaxWordLimit(accountStatus);
+
+// When handling length change:
+const handleLengthChange = (value: number | undefined) => {
+  if (value === undefined || value <= maxWordLimit) {
+    handleChange('length', value);
+  } else {
+    // Optionally, show an error message or toast notification
+    console.warn(`Word limit exceeded. Maximum allowed: ${maxWordLimit}`);
   }
 };
 
@@ -265,14 +293,19 @@ const handleContextChange = (value: ContextValue) => {
             Target: {framing.length} words
           </span>
         </div>
-        <Slider
-          value={[framing.length]}
-          max={2000}
-          min={100}
-          step={100}
-          className="w-full"
-          onValueChange={([value]) => handleChange('length', value)}
+        <Input
+          type="number"
+          placeholder="Enter word limit (optional)"
+          value={framing.length || ''}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+            handleLengthChange(e.target.value ? parseInt(e.target.value, 10) : undefined)
+          }
         />
+        {accountStatus === 'regular' && (
+          <p className="text-sm text-muted-foreground">
+            Maximum word limit: 1000 words
+          </p>
+        )}
       </div>
 
       {/* Personality Drawer */}

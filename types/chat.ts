@@ -30,7 +30,7 @@ export interface ChatScope extends WithTimestamps, WithStatus {
   approach?: ApproachValue;
   format?: FormatValue;
   length?: LengthValue;
-  sources?: {
+  sources: {
     urls: string[];
     files: string[];
     knowledgeBases: string[];

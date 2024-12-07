@@ -22,6 +22,7 @@ import { User } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave } from 'react-icons/hi2';
+import { ChatScopePanel } from '@/components/chat-scope/ChatScopePanel';
 
 type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
 type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
@@ -32,6 +33,8 @@ interface Props {
   subscription: SubscriptionWithProduct | null;
   userDetails: { [x: string]: any } | null;
 }
+
+
 
 const chatScopes = [
   { value: 'general', label: 'General Chat' },
@@ -50,16 +53,41 @@ const personalities = [
 export default function Chat(props: Props) {
   const { theme } = useTheme();
   const [model, setModel] = useState<OpenAIModel>('gpt-3.5-turbo');
-  const [chatScope, setChatScope] = useState('general');
-  const [personality, setPersonality] = useState('neutral');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isChatScopePanelOpen, setIsChatScopePanelOpen] = useState(false);
+  const [chatScopeState, setChatScopeState] = useState({
+    personality: 'neutral',
+    template: '',
+    context: '',
+    goals: '',
+    task: '',
+    approach: '',
+    format: '',
+    length: 500,
+    sources: {
+      urls: [],
+      files: [],
+      knowledgeBases: [],
+      emails: []
+    },
+    settings: {
+      chatName: '',
+      botName: '',
+      textToSpeech: false,
+      speechToText: false
+    }
+  });
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
     api: '/api/chatAPI',
-    body: { model, chatScope, personality },
+    body: { model, chatScope: chatScopeState.personality, personality: chatScopeState.personality },
   });
+
+  const handleChatScopeChange = (newScope: Partial<typeof chatScopeState>) => {
+    setChatScopeState(prev => ({ ...prev, ...newScope }));
+  };
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,12 +109,12 @@ export default function Chat(props: Props) {
 
   const startListening = () => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
 
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => setIsListening(false);
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput((prev) => prev + transcript);
       };
@@ -126,7 +154,7 @@ export default function Chat(props: Props) {
           alt=""
         />
         <div className="mx-auto flex min-h-[75vh] w-full max-w-[1000px] flex-col xl:min-h-[85vh]">
-          {/* Model, Scope, and Personality Selection */}
+          {/* Model Selection */}
           <div className={`flex w-full flex-col ${messages.length > 0 ? 'mb-5' : 'mb-auto'}`}>
             <div className="z-[2] mx-auto mb-5 flex w-full max-w-[600px] flex-col space-y-2 rounded-md bg-zinc-100 p-4 dark:bg-zinc-800">
               <div className="flex justify-between">
@@ -151,53 +179,9 @@ export default function Chat(props: Props) {
                   GPT-4
                 </div>
               </div>
-              <Select value={chatScope} onValueChange={setChatScope}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select chat scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  {chatScopes.map((scope) => (
-                    <SelectItem key={scope.value} value={scope.value}>
-                      {scope.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={personality} onValueChange={setPersonality}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select AI personality" />
-                </SelectTrigger>
-                <SelectContent>
-                  {personalities.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-
-            <Accordion type="multiple" className="w-full">
-              <AccordionItem
-                className="z-10 mx-auto my-0 w-max min-w-[150px] border-0 text-foreground dark:text-white"
-                value="item-1"
-              >
-                <AccordionTrigger className="dark:text-white">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-foreground dark:text-zinc-400">
-                      No plugins added
-                    </p>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="dark:text-white">
-                  <p className="text-center text-sm font-medium text-foreground dark:text-zinc-400">
-                    This is a cool text example.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
           </div>
-
+  
           {/* Chat History */}
           <div className="mb-auto flex w-full flex-col space-y-4">
             {messages.map((message, index) => (
@@ -243,7 +227,7 @@ export default function Chat(props: Props) {
               </div>
             ))}
           </div>
-
+  
           {/* Chat Input */}
           <form onSubmit={handleSendMessage} className="mt-5 flex justify-end">
             <Input
@@ -270,7 +254,7 @@ export default function Chat(props: Props) {
               {isLoading ? 'Thinking...' : 'Submit'}
             </Button>
           </form>
-
+  
           <div className="mt-5 flex flex-col items-center justify-center md:flex-row">
             <p className="text-center text-xs text-zinc-500 dark:text-white">
              AI may produce inaccurate information about people, places, or facts.
@@ -278,7 +262,25 @@ export default function Chat(props: Props) {
             </p>
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+  
+        {/* ChatScopePanel */}
+        
+        {isChatScopePanelOpen && (
+          <ChatScopePanel 
+            isOpen={isChatScopePanelOpen} 
+            onClose={() => setIsChatScopePanelOpen(false)}
+            chatScope={chatScopeState}
+            onChatScopeChange={handleChatScopeChange}
+          />
+        )}
+        
+        {/* Button to open ChatScopePanel */}
+        <Button
+          onClick={() => setIsChatScopePanelOpen(true)}
+          className="fixed right-0 top-1/2 -translate-y-1/2 transform"
+        >
+          Chat Scope
+        </Button>
+      </DashboardLayout>
   );
 }

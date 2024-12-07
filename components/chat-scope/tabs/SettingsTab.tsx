@@ -12,16 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChatScope } from '@/types/chat';
-import { LLM, LLMConfiguration } from '@/types/llm';
 
 interface SettingsTabProps {
   settings: ChatScope['settings'];
   onSettingsChange: (newSettings: Partial<ChatScope['settings']>) => void;
-  availableLLMs: LLM[];
-  llmConfigurations: LLMConfiguration[];
 }
 
-export function SettingsTab({ settings, onSettingsChange, availableLLMs, llmConfigurations }: SettingsTabProps) {
+export function SettingsTab({ settings, onSettingsChange }: SettingsTabProps) {
   const handleChange = (field: keyof ChatScope['settings'], value: string | boolean) => {
     onSettingsChange({ [field]: value });
   };
@@ -52,40 +49,22 @@ export function SettingsTab({ settings, onSettingsChange, availableLLMs, llmConf
 
       {/* LLM Switcher */}
       <div className="space-y-2">
-        <Label htmlFor="llmId">Language Model</Label>
+        <Label htmlFor="llmModel">Language Model</Label>
         <Select
-          value={settings.llmId}
-          onValueChange={(value) => handleChange('llmId', value)}
+          value={settings.llmModel}
+          onValueChange={(value) => handleChange('llmModel', value)}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a language model" />
           </SelectTrigger>
           <SelectContent>
-            {availableLLMs.map((llm) => (
-              <SelectItem key={llm.id} value={llm.id}>
-                {llm.name}
-              </SelectItem>
-            ))}
+            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+            <SelectItem value="gpt-4">GPT-4</SelectItem>
+            <SelectItem value="claude-v1">Claude v1</SelectItem>
+            <SelectItem value="claude-instant-v1">Claude Instant v1</SelectItem>
           </SelectContent>
         </Select>
       </div>
-
-      {/* LLM Configuration */}
-      {settings.llmId && (
-        <div className="space-y-2">
-          <Label>LLM Configuration</Label>
-          {llmConfigurations
-            .filter(config => config.id === settings.llmId)
-            .map(config => (
-              <div key={config.id} className="text-sm">
-                <p>Provider: {config.provider}</p>
-                <p>Max Tokens: {config.max_tokens}</p>
-                <p>Capabilities: {config.capabilities.join(', ')}</p>
-              </div>
-            ))
-          }
-        </div>
-      )}
 
       {/* Text to Speech */}
       <div className="flex items-center justify-between">
