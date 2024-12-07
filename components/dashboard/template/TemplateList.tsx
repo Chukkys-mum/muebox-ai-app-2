@@ -1,10 +1,8 @@
-// - TemplateList.tsx (template management UI)
-
 // /components/template/TemplateList.tsx
+'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Template, TemplateSearchParams } from '@/types/template/types';
-import { templateManager } from '@/services/template/TemplateManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,53 +14,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { useTemplates } from '@/hooks/useTemplates';
 
 interface TemplateListProps {
+  initialTemplates: Template[];
   onSelect?: (template: Template) => void;
   onEdit?: (template: Template) => void;
   onDelete?: (template: Template) => void;
-  filter?: TemplateSearchParams;
 }
 
 export const TemplateList: React.FC<TemplateListProps> = ({
+  initialTemplates,
   onSelect,
   onEdit,
-  onDelete,
-  filter: initialFilter
+  onDelete
 }) => {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<TemplateSearchParams>(initialFilter || {});
+  const [searchParams, setSearchParams] = useState<TemplateSearchParams>({});
+  const { templates, loading, error, mutate } = useTemplates(initialTemplates, searchParams);
 
-  useEffect(() => {
-    loadTemplates();
-  }, [filter]);
+  const handleSearch = useCallback((query: string) => {
+    setSearchParams(prev => ({ ...prev, query }));
+  }, []);
 
-  const loadTemplates = async () => {
-    setLoading(true);
-    try {
-      const templates = await templateManager.listTemplates({
-        ...filter,
-        query: searchQuery
-      });
-      setTemplates(templates);
-    } catch (error) {
-      console.error('Failed to load templates:', error);
-    } finally {
-      setLoading(false);
+  const handleCategoryFilter = useCallback((category: string) => {
+    setSearchParams(prev => ({ ...prev, category: category as any }));
+  }, []);
+
+  const handleDelete = useCallback(async (template: Template) => {
+    if (onDelete) {
+      await onDelete(template);
+      mutate();
     }
-  };
+  }, [onDelete, mutate]);
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setFilter(prev => ({ ...prev, query }));
-  };
-
-  const handleCategoryFilter = (category: string) => {
-    setFilter(prev => ({ ...prev, category: category as any }));
-  };
+  if (error) {
+    return <div>Error loading templates: {error.message}</div>;
+  }
 
   return (
     <Card className="w-full">
@@ -73,13 +61,13 @@ export const TemplateList: React.FC<TemplateListProps> = ({
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search templates..."
-              value={searchQuery}
+              value={searchParams.query || ''}
               onChange={e => handleSearch(e.target.value)}
               className="pl-8"
             />
           </div>
           <Select
-            value={filter.category}
+            value={searchParams.category}
             onValueChange={handleCategoryFilter}
           >
             <SelectTrigger className="w-[180px]">
@@ -107,65 +95,15 @@ export const TemplateList: React.FC<TemplateListProps> = ({
             No templates found
           </div>
         ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
             {templates.map(template => (
-              <Card
+              <TemplateCard
                 key={template.id}
-                className="hover:bg-muted/50 cursor-pointer p-4"
-                onClick={() => onSelect?.(template)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-medium">{template.name}</h3>
-                      <Badge variant={template.metadata.isPublic ? "default" : "secondary"}>
-                        {template.metadata.isPublic ? "Public" : "Private"}
-                      </Badge>
-                      <Badge variant="outline">{template.category}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {template.description}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {template.metadata.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.(template);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete?.(template);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <span>Created: {new Date(template.metadata.created).toLocaleDateString()}</span>
-                  <span className="mx-2">•</span>
-                  <span>Modified: {new Date(template.metadata.modified).toLocaleDateString()}</span>
-                  <span className="mx-2">•</span>
-                  <span>Uses: {template.metadata.usageCount}</span>
-                </div>
-              </Card>
+                template={template}
+                onSelect={onSelect}
+                onEdit={onEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -173,7 +111,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           {templates.length > 0 && (
             <Button
               variant="outline"
-              onClick={loadTemplates}
+              onClick={() => mutate()}
               className="w-full max-w-xs"
             >
               Load More
@@ -184,3 +122,69 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     </Card>
   );
 };
+
+const TemplateCard: React.FC<{
+  template: Template;
+  onSelect?: (template: Template) => void;
+  onEdit?: (template: Template) => void;
+  onDelete?: (template: Template) => void;
+}> = React.memo(({ template, onSelect, onEdit, onDelete }) => (
+  <Card
+    className="hover:bg-muted/50 cursor-pointer p-4"
+    onClick={() => onSelect?.(template)}
+  >
+    <div className="flex justify-between items-start">
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <h3 className="font-medium">{template.name}</h3>
+          <Badge variant={template.metadata.isPublic ? "default" : "secondary"}>
+            {template.metadata.isPublic ? "Public" : "Private"}
+          </Badge>
+          <Badge variant="outline">{template.category}</Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {template.description}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {template.metadata.tags.map(tag => (
+            <Badge key={tag} variant="outline" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit?.(template);
+          }}
+        >
+          Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(template);
+          }}
+        >
+          Delete
+        </Button>
+      </div>
+    </div>
+    <div className="mt-2 text-xs text-muted-foreground">
+      <span>Created: {new Date(template.metadata.created).toLocaleDateString()}</span>
+      <span className="mx-2">•</span>
+      <span>Modified: {new Date(template.metadata.modified).toLocaleDateString()}</span>
+      <span className="mx-2">•</span>
+      <span>Uses: {template.metadata.usageCount}</span>
+    </div>
+  </Card>
+));
+
+TemplateCard.displayName = 'TemplateCard';

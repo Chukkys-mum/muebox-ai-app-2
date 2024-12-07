@@ -50,11 +50,10 @@ export default function DefaultAuthLayout(props: DefaultAuthLayoutProps) {
             {/* Quote Section */}
             <div className="flex w-full flex-col items-center justify-center px-4 text-center text-2xl font-bold text-white">
               <h4 className="mb-5 max-w-xl rounded-md text-2xl font-bold">
-                “Muebox AI empowers enterprises and individuals by creating personalized 
-                AI experiences tailored to your needs. Unlock adaptive intelligence for every interaction.”
+                “Unlock adaptive intelligence for every interaction.”
               </h4>
               <h5 className="text-xl font-medium leading-5 text-zinc-300">
-                Dean Bryan - Founder & CEO
+                Muebox Ai Ltd
               </h5>
             </div>
           </div>

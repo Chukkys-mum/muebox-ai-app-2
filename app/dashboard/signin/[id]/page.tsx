@@ -1,5 +1,6 @@
 // /app/dashboard/signin/[id]/page.tsx
 
+import { ErrorBoundary } from '@/components/error-boundary';
 import DefaultAuth from '@/components/auth';
 import AuthUI from '@/components/auth/AuthUI';
 import { redirect } from 'next/navigation';
@@ -12,6 +13,18 @@ import {
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
 
+async function getViewProps(params: { id: string }) {
+  const cookieStore = await cookies();
+  const preferredSignInView = cookieStore.get('preferredSignInView');
+  const viewTypes = getViewTypes();
+  
+  if (typeof params.id === 'string' && viewTypes.includes(params.id)) {
+    return params.id;
+  }
+  
+  return getDefaultSignInView(preferredSignInView?.value || null);
+}
+
 export default async function SignIn({
   params,
   searchParams,
@@ -21,40 +34,34 @@ export default async function SignIn({
 }) {
   try {
     const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
-    const viewTypes = getViewTypes();
     const redirectMethod = getRedirectMethod();
     
-    // Get user session first
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const [sessionResult, viewProp] = await Promise.all([
+      supabase.auth.getSession(),
+      getViewProps(params)
+    ]);
+
+    const session = sessionResult.data.session;
     
-    // Early return for authenticated users
     if (session && params.id !== 'update_password') {
       return redirect('/dashboard/main');
     }
 
-    // Handle view type determination
-    let viewProp: string;
-    if (typeof params.id === 'string' && viewTypes.includes(params.id)) {
-      viewProp = params.id;
-    } else {
-      const cookieStore = await cookies();
-      const preferredSignInView = cookieStore.get('preferredSignInView');
-      viewProp = getDefaultSignInView(preferredSignInView?.value || null);
+    if (viewProp !== params.id) {
       return redirect(`/dashboard/signin/${viewProp}`);
     }
 
-    // Check for password update without session
     if (!session && viewProp === 'update_password') {
       return redirect('/dashboard/signin');
     }
 
-    // Get user data for UI if needed
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
 
     return (
-      <DefaultAuth viewProp={viewProp}>
-        <div>
+      <ErrorBoundary fallback={<DefaultAuth viewProp="error"><div>Authentication Error</div></DefaultAuth>}>
+        <DefaultAuth viewProp={viewProp}>
           <AuthUI
             viewProp={viewProp}
             user={user}
@@ -64,15 +71,14 @@ export default async function SignIn({
             disableButton={searchParams?.disable_button}
             allowOauth={allowOauth}
           />
-        </div>
-      </DefaultAuth>
+        </DefaultAuth>
+      </ErrorBoundary>
     );
   } catch (error) {
-    // Only redirect if it's not already a redirect error
     if ((error as any)?.digest?.includes('NEXT_REDIRECT')) {
-      throw error; // Re-throw redirect errors
+      throw error;
     }
-    console.error('Sign in page error:', error);
+    console.error('Sign in error:', error);
     return redirect('/dashboard/signin');
   }
 }

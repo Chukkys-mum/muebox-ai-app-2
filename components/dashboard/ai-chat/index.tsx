@@ -2,9 +2,9 @@
 
 'use client';
 
-/*eslint-disable*/
+import { useState, useEffect, useRef } from 'react';
+import { useChat } from 'ai/react';
 import DashboardLayout from '@/components/layout';
-import MessageBoxChat from '@/components/MessageBoxChat';
 import {
   Accordion,
   AccordionContent,
@@ -13,28 +13,18 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Bgdark from '@/public/img/dark/ai-chat/bg-image.png';
 import Bg from '@/public/img/light/ai-chat/bg-image.png';
-import { ChatBody, OpenAIModel } from '@/types/types';
+import { OpenAIModel } from '@/types';
 import { Database } from '@/types/types_db';
 import { User } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import { useState } from 'react';
-import { HiMiniPencilSquare, HiSparkles, HiUser } from 'react-icons/hi2';
+import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave } from 'react-icons/hi2';
 
-type Subscription = Database['public']['Tables']['subscriptions']['Row'];
-type Product = Database['public']['Tables']['products']['Row'];
-type Price = Database['public']['Tables']['prices']['Row'];
-interface ProductWithPrices extends Product {
-  prices: Price[];
-}
-interface PriceWithProduct extends Price {
-  products: Product | null;
-}
-interface SubscriptionWithProduct extends Subscription {
-  prices: PriceWithProduct | null;
-}
+type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
+type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
 
 interface Props {
   user: User | null | undefined;
@@ -42,99 +32,80 @@ interface Props {
   subscription: SubscriptionWithProduct | null;
   userDetails: { [x: string]: any } | null;
 }
+
+const chatScopes = [
+  { value: 'general', label: 'General Chat' },
+  { value: 'business', label: 'Business Advice' },
+  { value: 'technical', label: 'Technical Support' },
+  { value: 'creative', label: 'Creative Writing' },
+];
+
+const personalities = [
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'humorous', label: 'Humorous' },
+];
+
 export default function Chat(props: Props) {
-  const { theme, setTheme } = useTheme();
-  // *** If you use .env.local variable for your API key, method which we recommend, use the apiKey variable commented below
-  // Input States
-  const [inputOnSubmit, setInputOnSubmit] = useState<string>('');
-  const [inputMessage, setInputMessage] = useState<string>('');
-  // Response message
-  const [outputCode, setOutputCode] = useState<string>('');
-  // ChatGPT model
+  const { theme } = useTheme();
   const [model, setModel] = useState<OpenAIModel>('gpt-3.5-turbo');
-  // Loading state
-  const [loading, setLoading] = useState<boolean>(false);
+  const [chatScope, setChatScope] = useState('general');
+  const [personality, setPersonality] = useState('neutral');
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // API Key
-  const handleTranslate = async () => {
-    setInputOnSubmit(inputMessage);
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
+    api: '/api/chatAPI',
+    body: { model, chatScope, personality },
+  });
 
-    // Chat post conditions(maximum number of characters, valid message etc.)
-    const maxCodeLength = model === 'gpt-3.5-turbo' ? 700 : 700;
-
-    if (!inputMessage) {
-      alert('Please enter your subject.');
-      return;
-    }
-
-    if (inputMessage.length > maxCodeLength) {
-      alert(
-        `Please enter code less than ${maxCodeLength} characters. You are currently at ${inputMessage.length} characters.`
-      );
-      return;
-    }
-    setOutputCode(' ');
-    setLoading(true);
-    const controller = new AbortController();
-    const body: ChatBody = {
-      inputMessage,
-      model
-    };
-
-    // -------------- Fetch --------------
-    const response = await fetch('/api/chatAPI', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      signal: controller.signal,
-      body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-      setLoading(false);
-      if (response) {
-        alert(
-          'Something went wrong went fetching from the API. Make sure to use a valid API key.'
-        );
-      }
-      return;
-    }
-
-    const data = response.body;
-
-    if (!data) {
-      setLoading(false);
-      alert('Something went wrong');
-      return;
-    }
-
-    const reader = data.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-
-    while (!done) {
-      setLoading(true);
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunkValue = decoder.decode(value);
-      setOutputCode((prevCode) => prevCode + chunkValue);
-    }
-
-    setLoading(false);
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await handleSubmit(e);
+    setInput('');
+    inputRef.current?.focus();
   };
-  // -------------- Copy Response --------------
-  // const copyToClipboard = (text: string) => {
-  //  const el = document.createElement('textarea');
-  //  el.value = text;
-  //  document.body.appendChild(el);
-  //  el.select();
-  //  document.execCommand('copy');
-  //  document.body.removeChild(el);
-  // };
 
-  const handleChange = (Event: any) => {
-    setInputMessage(Event.target.value);
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e as any);
+    }
+  };
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const startListening = () => {
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput((prev) => prev + transcript);
+      };
+
+      recognition.start();
+    } else {
+      alert('Speech recognition is not supported in this browser.');
+    }
+  };
+
+  const speakMessage = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      speechSynthesis.speak(utterance);
+    } else {
+      alert('Text-to-speech is not supported in this browser.');
+    }
   };
 
   return (
@@ -143,8 +114,8 @@ export default function Chat(props: Props) {
       user={props.user}
       products={props.products}
       subscription={props.subscription}
-      title="AI Generator"
-      description="AI Generator"
+      title="Chat"
+      description="AI Chat"
     >
       <div className="relative flex w-full flex-col pt-[20px] md:pt-0">
         <Image
@@ -155,39 +126,55 @@ export default function Chat(props: Props) {
           alt=""
         />
         <div className="mx-auto flex min-h-[75vh] w-full max-w-[1000px] flex-col xl:min-h-[85vh]">
-          {/* Model Change */}
-          <div
-            className={`flex w-full flex-col ${
-              outputCode ? 'mb-5' : 'mb-auto'
-            }`}
-          >
-            <div className="z-[2] mx-auto mb-5 flex w-max rounded-md bg-zinc-100 p-1 dark:bg-zinc-800">
-              <div
-                className={`flex cursor-pointer items-center justify-center py-2 transition-all duration-75 ${
-                  model === 'gpt-3.5-turbo'
-                    ? 'bg-white dark:bg-zinc-950'
-                    : 'transparent'
-                } h-[70xp] w-[174px]
-       ${
-         model === 'gpt-3.5-turbo' ? '' : ''
-       } rounded-md text-base font-semibold text-foreground dark:text-white`}
-                onClick={() => setModel('gpt-3.5-turbo')}
-              >
-                GPT-3.5
+          {/* Model, Scope, and Personality Selection */}
+          <div className={`flex w-full flex-col ${messages.length > 0 ? 'mb-5' : 'mb-auto'}`}>
+            <div className="z-[2] mx-auto mb-5 flex w-full max-w-[600px] flex-col space-y-2 rounded-md bg-zinc-100 p-4 dark:bg-zinc-800">
+              <div className="flex justify-between">
+                <div
+                  className={`flex cursor-pointer items-center justify-center py-2 transition-all duration-75 ${
+                    model === 'gpt-3.5-turbo'
+                      ? 'bg-white dark:bg-zinc-950'
+                      : 'transparent'
+                  } h-[70xp] w-[174px] rounded-md text-base font-semibold text-foreground dark:text-white`}
+                  onClick={() => setModel('gpt-3.5-turbo')}
+                >
+                  GPT-3.5
+                </div>
+                <div
+                  className={`flex cursor-pointer items-center justify-center py-2 transition-colors duration-75 ${
+                    model === 'gpt-4-1106-preview'
+                      ? 'bg-white dark:bg-zinc-950'
+                      : 'transparent'
+                  } h-[70xp] w-[174px] rounded-md text-base font-semibold text-foreground dark:text-white`}
+                  onClick={() => setModel('gpt-4-1106-preview')}
+                >
+                  GPT-4
+                </div>
               </div>
-              <div
-                className={`flex cursor-pointer items-center justify-center py-2 transition-colors duration-75 ${
-                  model === 'gpt-4-1106-preview'
-                    ? 'bg-white dark:bg-zinc-950'
-                    : 'transparent'
-                } h-[70xp] w-[174px]
-       ${
-         model === 'gpt-4-1106-preview' ? '' : ''
-       } rounded-md text-base font-semibold text-foreground dark:text-white`}
-                onClick={() => setModel('gpt-4-1106-preview')}
-              >
-                GPT-4
-              </div>
+              <Select value={chatScope} onValueChange={setChatScope}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select chat scope" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chatScopes.map((scope) => (
+                    <SelectItem key={scope.value} value={scope.value}>
+                      {scope.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={personality} onValueChange={setPersonality}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select AI personality" />
+                </SelectTrigger>
+                <SelectContent>
+                  {personalities.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <Accordion type="multiple" className="w-full">
@@ -210,54 +197,84 @@ export default function Chat(props: Props) {
               </AccordionItem>
             </Accordion>
           </div>
-          {/* Main Box */}
-          <div
-            className={`mx-auto flex w-full flex-col ${
-              outputCode ? 'flex' : 'hidden'
-            } mb-auto`}
-          >
-            <div className="mb-2.5 flex w-full items-center text-center">
-              <div className="mr-5 flex h-[40px] min-h-[40px] min-w-[40px] items-center justify-center rounded-full border border-zinc-200 bg-transparent dark:border-transparent dark:bg-white">
-                <HiUser className="h-4 w-4" />
-              </div>
-              <div className="flex w-full">
-                <div className="me-2.5 flex w-full rounded-md border border-zinc-200 bg-white/10 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950">
-                  <p className="text-sm font-medium leading-6 text-foreground dark:text-white md:text-base md:leading-[26px]">
-                    {inputOnSubmit}
-                  </p>
+
+          {/* Chat History */}
+          <div className="mb-auto flex w-full flex-col space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div className="flex items-end">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                      message.role === 'user'
+                        ? 'bg-blue-500'
+                        : 'bg-zinc-300 dark:bg-zinc-700'
+                    }`}
+                  >
+                    {message.role === 'user' ? (
+                      <HiUser className="h-5 w-5 text-white" />
+                    ) : (
+                      <HiSparkles className="h-5 w-5 text-zinc-800 dark:text-white" />
+                    )}
+                  </div>
+                  <div
+                    className={`ml-2 rounded-lg px-3 py-2 ${
+                      message.role === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                  {message.role === 'assistant' && (
+                    <Button
+                      onClick={() => speakMessage(message.content)}
+                      className="ml-2 p-2"
+                      disabled={isSpeaking}
+                    >
+                      <HiSpeakerWave className="h-5 w-5" />
+                    </Button>
+                  )}
                 </div>
-                <div className="flex w-[70px] cursor-pointer items-center justify-center rounded-md border border-zinc-200 bg-white/10 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950">
-                  <HiMiniPencilSquare className="h-[20px] w-[20px] text-foreground dark:text-white" />
-                </div>
               </div>
-            </div>
-            <div className="flex w-full">
-              <div className="mr-5 flex h-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-zinc-950 dark:border dark:border-zinc-800">
-                <HiSparkles className="h-4 w-4 text-white" />
-              </div>
-              <MessageBoxChat output={outputCode} />
-            </div>
+            ))}
           </div>
+
           {/* Chat Input */}
-          <div className="mt-5 flex justify-end">
+          <form onSubmit={handleSendMessage} className="mt-5 flex justify-end">
             <Input
+              ref={inputRef}
               className="mr-2.5 h-full min-h-[54px] w-full px-5 py-5 focus:outline-0 dark:border-zinc-800 dark:placeholder:text-zinc-400"
               placeholder="Type your message here..."
-              onChange={handleChange}
+              value={input}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
             />
             <Button
-              className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
-              onClick={handleTranslate}
+              type="button"
+              onClick={startListening}
+              className="mr-2 p-2"
+              disabled={isListening}
             >
-              Submit
+              <HiMicrophone className="h-5 w-5" />
             </Button>
-          </div>
+            <Button
+              type="submit"
+              className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Thinking...' : 'Submit'}
+            </Button>
+          </form>
 
           <div className="mt-5 flex flex-col items-center justify-center md:flex-row">
             <p className="text-center text-xs text-zinc-500 dark:text-white">
-              Free Research Preview. ChatGPT may produce inaccurate information
-              about people, places, or facts. Consider checking important
-              information.
+             AI may produce inaccurate information about people, places, or facts.
+             Consider checking important information.
             </p>
           </div>
         </div>

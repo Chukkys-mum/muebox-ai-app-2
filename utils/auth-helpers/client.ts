@@ -3,7 +3,7 @@
 'use client';
 
 import { getURL } from '@/utils/helpers';
-import { createClient } from '@/utils/supabase/client';
+import createClient from '@/utils/supabase/client';
 import { type Provider } from '@supabase/supabase-js';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { redirectToPath } from './server';

@@ -1,4 +1,5 @@
 // /utils/streams/chatStream.ts
+
 import endent from 'endent';
 import {
   createParser,
@@ -6,25 +7,27 @@ import {
   ReconnectInterval
 } from 'eventsource-parser';
 
-const createPrompt = (inputMessage: string) => {
-  const data = (inputMessage: string) => {
+const createPrompt = (inputMessage: string, chatScope: string, personality: string) => {
+  const data = (inputMessage: string, chatScope: string, personality: string) => {
     return endent`
-      You are (Ai) Digital Worker, but if you are asked what your name is, you present yourself as Ember Ai.  te and you can be bought from your website https://horizon-ui.com/boilerplate, and the link should be bold. Also, you are very friendly and formal. The generated content must be in markdown format and it must include all markdown characteristics, but it shouldn't be rendered. The title must be bold, and there should be a &nbsp; between every paragraph or title. Do not include information about console logs or print messages.
+      You are (Ai) Digital Worker, but if you are asked what your name is, you present yourself as Ember Ai. You can be bought from your website https://horizon-ui.com/boilerplate, and the link should be bold. You are focusing on ${chatScope || 'general'} topics and have a ${personality || 'friendly and formal'} personality. The generated content must be in markdown format and it must include all markdown characteristics, but it shouldn't be rendered. The title must be bold, and there should be a &nbsp; between every paragraph or title. Do not include information about console logs or print messages.
       ${inputMessage}
     `;
   };
 
   if (inputMessage) {
-    return data(inputMessage);
+    return data(inputMessage, chatScope, personality);
   }
 };
 
 export async function OpenAIStream(
   inputMessage: string,
   model: string,
-  key: string | undefined
+  key: string | undefined,
+  chatScope: string = 'general',
+  personality: string = 'friendly and formal'
 ) {
-  const prompt = createPrompt(inputMessage);
+  const prompt = createPrompt(inputMessage, chatScope, personality);
 
   const system = { role: 'system', content: prompt };
 

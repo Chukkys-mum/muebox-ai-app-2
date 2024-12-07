@@ -1,12 +1,44 @@
 // types/subscription.ts
 
 import { WithTimestamps, WithStatus, JsonB, DbTimestamptz } from './common';
-import Stripe from 'stripe';
+import type { Stripe } from 'stripe';
 
 export type AccountType = 'personal' | 'company';
 export type PricingPlanInterval = 'day' | 'week' | 'month' | 'year';
 export type PricingType = 'one_time' | 'recurring';
-export type SubscriptionStatus = 'trialing' | 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'unpaid' | 'paused';
+export type SubscriptionStatus = 
+  | 'trialing' 
+  | 'active' 
+  | 'canceled' 
+  | 'incomplete' 
+  | 'incomplete_expired' 
+  | 'past_due' 
+  | 'unpaid' 
+  | 'paused';
+
+// Generic Stripe types that we need
+export interface StripeAddress {
+  city?: string | null;
+  country?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  postal_code?: string | null;
+  state?: string | null;
+}
+
+export interface StripeMetadata {
+  [name: string]: string | number | null;
+}
+
+export interface StripePaymentMethod {
+  type: string;
+  card?: {
+    brand: string;
+    last4: string;
+    exp_month: number;
+    exp_year: number;
+  };
+}
 
 // Customer interface
 export interface Customer {
@@ -25,8 +57,8 @@ export interface Account {
   contact_emails?: string[];
   contact_phone?: string;
   website?: string;
-  billing_address?: Stripe.Address;
-  payment_method?: Stripe.PaymentMethod[Stripe.PaymentMethod.Type];
+  billing_address?: StripeAddress;
+  payment_method?: StripePaymentMethod;
   currency?: string;
   display_picture?: string;
   banner_image?: string;
@@ -49,7 +81,7 @@ export interface Product {
   name?: string;
   description?: string;
   image?: string;
-  metadata?: Stripe.Metadata;
+  metadata?: StripeMetadata;
 }
 
 // Price interface
@@ -60,11 +92,11 @@ export interface Price {
   description?: string;
   unit_amount?: number;
   currency?: Currency;
-  type?: Stripe.Price.Type;
-  interval?: Stripe.Price.Recurring.Interval;
+  type?: PricingType;
+  interval?: PricingPlanInterval;
   interval_count?: number;
   trial_period_days?: number | null;
-  metadata?: Stripe.Metadata;
+  metadata?: StripeMetadata;
   products?: Product;
 }
 
@@ -84,7 +116,7 @@ export interface PriceWithProduct extends Price {
 // Subscription interface
 export interface Subscription {
   id: string;
-  account_id: string;  // Changed from user_id
+  account_id: string;
   status?: SubscriptionStatus;
   metadata?: JsonB;
   price_id?: string;
@@ -98,7 +130,12 @@ export interface Subscription {
   canceled_at?: DbTimestamptz;
   trial_start?: DbTimestamptz;
   trial_end?: DbTimestamptz;
-  prices?: Price;  // Optional relation
+  prices?: Price | null; // Change this to allow null
+}
+
+// Subscription with Price and Product
+export interface SubscriptionWithProduct extends Subscription {
+  prices: PriceWithProduct | null;
 }
 
 // You can add more subscription-related types or interfaces here as needed

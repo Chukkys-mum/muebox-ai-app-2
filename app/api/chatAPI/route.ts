@@ -1,45 +1,72 @@
 // /app/api/chatAPI/route.ts
 
-import { ChatBody } from '@/types/types';
-import { OpenAIStream } from '@/utils/streams/chatStream';
+import { OpenAIStream, StreamingTextResponse } from 'ai';
+import { Configuration, OpenAIApi } from 'openai-edge';
+import { kv } from '@vercel/kv';
 
 export const runtime = 'edge';
 
-export async function GET(req: Request): Promise<Response> {
+const config = new Configuration({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
+});
+const openai = new OpenAIApi(config);
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const conversationId = searchParams.get('conversationId');
+
+  if (!conversationId) {
+    return new Response('Conversation ID is required', { status: 400 });
+  }
+
   try {
-    const { inputMessage, model, apiKey } = (await req.json()) as ChatBody;
-
-    let apiKeyFinal;
-    if (apiKey) {
-      apiKeyFinal = apiKey;
-    } else {
-      apiKeyFinal = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-    }
-
-    const stream = await OpenAIStream(inputMessage, model, apiKeyFinal);
-
-    return new Response(stream);
+    const messages = await kv.get(`conversation:${conversationId}`);
+    return new Response(JSON.stringify(messages), {
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error(error);
-    return new Response('Error', { status: 500 });
+    console.error('Error fetching conversation:', error);
+    return new Response('Error fetching conversation', { status: 500 });
   }
 }
-export async function POST(req: Request): Promise<Response> {
+
+export async function POST(req: Request) {
   try {
-    const { inputMessage, model, apiKey } = (await req.json()) as ChatBody;
+    const { messages, model, chatScope, personality, conversationId, isBot } = await req.json();
 
-    let apiKeyFinal;
-    if (apiKey) {
-      apiKeyFinal = apiKey;
+    if (isBot) {
+      const systemMessage = `You are an AI assistant with a ${personality} personality, focusing on ${chatScope} topics. Please respond accordingly.`;
+
+      const response = await openai.createChatCompletion({
+        model: model || 'gpt-3.5-turbo',
+        stream: true,
+        messages: [
+          { role: 'system', content: systemMessage },
+          ...messages
+        ]
+      });
+
+      const stream = OpenAIStream(response);
+
+      // Store the conversation
+      if (conversationId) {
+        await kv.set(`conversation:${conversationId}`, messages);
+      }
+
+      return new StreamingTextResponse(stream);
     } else {
-      apiKeyFinal = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+      // Handle user-to-user communication
+      if (!conversationId) {
+        return new Response('Conversation ID is required for user messages', { status: 400 });
+      }
+
+      // Append the new message to the conversation
+      await kv.lpush(`conversation:${conversationId}`, JSON.stringify(messages[messages.length - 1]));
+
+      return new Response('Message sent', { status: 200 });
     }
-
-    const stream = await OpenAIStream(inputMessage, model, apiKeyFinal);
-
-    return new Response(stream);
   } catch (error) {
-    console.error(error);
+    console.error('Error in POST method:', error);
     return new Response('Error', { status: 500 });
   }
 }

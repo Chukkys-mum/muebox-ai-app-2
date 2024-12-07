@@ -23,34 +23,36 @@ function createClient() {
         flowType: 'pkce'
       },
       cookies: {
-        getAll: () => {
-          return document.cookie
+        get(name: string) {
+          if (typeof document === 'undefined') return '';
+          const cookie = document.cookie
             .split('; ')
-            .map(cookie => {
-              const [name, value] = cookie.split('=');
-              return { name, value };
-            });
+            .find((row) => row.startsWith(`${name}=`));
+          return cookie ? cookie.split('=')[1] : '';
         },
-        setAll: (cookies: { name: string; value: string; options: CookieOptions }[]) => {
-          cookies.forEach(({ name, value, options }) => {
-            let cookie = `${name}=${value}`;
-            if (options.maxAge) {
-              cookie += `; Max-Age=${options.maxAge}`;
-            }
-            if (options.domain) {
-              cookie += `; Domain=${options.domain}`;
-            }
-            if (options.path) {
-              cookie += `; Path=${options.path}`;
-            }
-            if (options.sameSite) {
-              cookie += `; SameSite=${options.sameSite}`;
-            }
-            if (options.secure) {
-              cookie += '; Secure';
-            }
-            document.cookie = cookie;
-          });
+        set(name: string, value: string, options: CookieOptions) {
+          if (typeof document === 'undefined') return;
+          let cookie = `${name}=${value}`;
+          if (options.maxAge) {
+            cookie += `; Max-Age=${options.maxAge}`;
+          }
+          if (options.domain) {
+            cookie += `; Domain=${options.domain}`;
+          }
+          if (options.path) {
+            cookie += `; Path=${options.path}`;
+          }
+          if (options.sameSite) {
+            cookie += `; SameSite=${options.sameSite}`;
+          }
+          if (options.secure) {
+            cookie += '; Secure';
+          }
+          document.cookie = cookie;
+        },
+        remove(name: string, options: CookieOptions) {
+          if (typeof document === 'undefined') return;
+          this.set(name, '', { ...options, maxAge: -1 });
         }
       }
     }
