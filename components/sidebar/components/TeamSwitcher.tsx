@@ -1,3 +1,5 @@
+// components/sidebar/components/TeamSwitcher.tsx
+
 import React, { useEffect, useState } from 'react';
 import { Lock, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';

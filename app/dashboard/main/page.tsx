@@ -14,11 +14,11 @@ import { redirect } from 'next/navigation';
 export default async function Account() {
   const supabase = createClient();
   
-  // Check session first
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   console.log('Main Page Auth Check:', {
     hasSession: !!session,
-    error: sessionError
+    error: sessionError,
+    sessionData: session // Add this to see the full session data
   });
 
   if (!session) {

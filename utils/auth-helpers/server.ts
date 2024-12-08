@@ -171,7 +171,7 @@ export async function signInWithPassword(formData: FormData) {
       );
     } else if (data.user) {
       await cookieStore.set('preferredSignInView', 'password_signin', { path: '/' });
-      redirectPath = getStatusRedirect('/', 'Success!', 'You are now signed in.');
+      redirectPath = getStatusRedirect('/dashboard/main', 'Success!', 'You are now signed in.');
     } else {
       redirectPath = getErrorRedirect(
         '/dashboard/signin/password_signin',
@@ -196,6 +196,7 @@ export async function signUp(formData: FormData) {
     const email = String(formData.get('email')).trim();
     const password = String(formData.get('password')).trim();
     
+    // Input validation
     if (!isValidEmail(email) || !password || password.length < 6) {
       return getErrorRedirect(
         '/dashboard/signin/signup',
@@ -205,6 +206,8 @@ export async function signUp(formData: FormData) {
     }
 
     const supabase = createClient();
+
+    // Create auth user
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
@@ -217,10 +220,13 @@ export async function signUp(formData: FormData) {
       }
     });
 
+    console.log('Sign up response:', { error, data });
+
+    // Handle existing user error
     if (error?.message === 'User already registered') {
       return getErrorRedirect(
         '/dashboard/signin/password_signin',
-        'Account exists',
+        'Account exists', 
         'Please sign in with your password or reset it if forgotten.'
       );
     }
@@ -229,10 +235,70 @@ export async function signUp(formData: FormData) {
       return getErrorRedirect('/dashboard/signin/signup', 'Sign up failed', error.message);
     }
 
+    // If user created successfully, set up their trial
+    if (data.user) {
+      // Create account record with trial status
+      const { error: accountError } = await supabase
+      .from('accounts')
+      .insert({
+        id: data.user.id,
+        type: 'personal' as const,
+        name: data.user.email!,
+        status: 'active',
+        trial_credits: 2000,
+        credits: 0,
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
+      });
+
+      if (accountError) {
+        console.error('Failed to create account:', accountError);
+      }
+
+      // Create trial subscription record
+      const { error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .insert({
+        id: `trial_${data.user.id}`,
+        account_id: data.user.id,
+        status: 'trialing' as const,
+        credits: 0,
+        trial_credits: 2000,
+        created: new Date().toISOString(),
+        trial_start: new Date().toISOString(), 
+        trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
+      });
+
+      if (subscriptionError) {
+        console.error('Failed to create subscription:', subscriptionError);
+      }
+
+      // Explicitly set the session
+      if (!data.session) {
+        const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (signInError) {
+          console.error('Failed to sign in after signup:', signInError);
+        } else {
+          console.log('Successfully signed in after signup:', signInData);
+        }
+      }
+    }
+
+    // Check if session exists after potential sign-in
+    const { data: { session } } = await supabase.auth.getSession();
+
+    console.log('Final session state:', session);
+
     return getStatusRedirect(
-      '/', 
+      '/dashboard/main',
       'Success!', 
-      data.session ? 'You are now signed in.' : 'Please check your email for confirmation.'
+      session ? 'You are now signed in.' : 'Please check your email for confirmation.'
     );
 
   } catch (error) {

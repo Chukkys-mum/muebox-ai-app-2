@@ -1,3 +1,4 @@
+// /utils/stripe/server.ts
 'use server';
 
 import { Tables } from '@/types/types_db';
@@ -9,13 +10,32 @@ import {
 import { stripe } from '@/utils/stripe/config';
 import { createOrRetrieveCustomer } from '@/utils/supabase/admin';
 import { createClient } from '@/utils/supabase/server';
-import Stripe from 'stripe';
+import type { Stripe } from 'stripe';
 
 type Price = Tables<'prices'>;
 
 type CheckoutResponse = {
   errorRedirect?: string;
   sessionId?: string;
+};
+
+type CreateCheckoutSessionParams = {
+  allow_promotion_codes?: boolean;
+  billing_address_collection?: 'required' | 'auto' | 'optional';
+  customer?: string;
+  customer_update?: {
+    address?: 'auto' | 'never';
+  };
+  line_items: Array<{
+    price: string;
+    quantity: number;
+  }>;
+  mode?: 'payment' | 'subscription';
+  subscription_data?: {
+    trial_end?: number;
+  };
+  success_url: string;
+  cancel_url: string;
 };
 
 export async function checkoutWithStripe(
@@ -47,7 +67,7 @@ export async function checkoutWithStripe(
       throw new Error('Unable to access customer record.');
     }
 
-    let params: Stripe.Checkout.SessionCreateParams = {
+    let params: CreateCheckoutSessionParams = {
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       customer,
@@ -92,7 +112,6 @@ export async function checkoutWithStripe(
       throw new Error('Unable to create checkout session.');
     }
 
-    // Instead of returning a Response, just return the data or error.
     if (session) {
       return { sessionId: session.id };
     } else {

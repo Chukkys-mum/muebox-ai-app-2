@@ -1,3 +1,5 @@
+// /app/dashboard/subscription/page.tsx
+
 import Subscription from '@/components/dashboard/subscription';
 import {
   getProducts,

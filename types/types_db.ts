@@ -11,6 +11,95 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+
+      accounts: {
+        Row: {
+          id: string;
+          type: Database['public']['Enums']['account_type'];
+          name: string;
+          domain: string | null;
+          organization_number: string | null;
+          tax_id: string | null;
+          contact_emails: string[] | null;
+          contact_phone: string | null;
+          website: string | null;
+          billing_address: Json | null;
+          payment_method: Json | null;
+          currency: string | null;
+          display_picture: string | null;
+          banner_image: string | null;
+          timezone: string | null;
+          address_line1: string | null;
+          address_line2: string | null;
+          city: string | null;
+          state: string | null;
+          zip_code: string | null;
+          metadata: Json | null;
+          status: string;
+          created_at: string;
+          updated_at: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
+        };
+        Insert: {
+          id?: string;
+          type: Database['public']['Enums']['account_type'];
+          name: string;
+          domain?: string | null;
+          organization_number?: string | null;
+          tax_id?: string | null;
+          contact_emails?: string[] | null;
+          contact_phone?: string | null;
+          website?: string | null;
+          billing_address?: Json | null;
+          payment_method?: Json | null;
+          currency?: string | null;
+          display_picture?: string | null;
+          banner_image?: string | null;
+          timezone?: string | null;
+          address_line1?: string | null;
+          address_line2?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          metadata?: Json | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
+        };
+        Update: {
+          id?: string;
+          type?: Database['public']['Enums']['account_type'];
+          name?: string;
+          domain?: string | null;
+          organization_number?: string | null;
+          tax_id?: string | null;
+          contact_emails?: string[] | null;
+          contact_phone?: string | null;
+          website?: string | null;
+          billing_address?: Json | null;
+          payment_method?: Json | null;
+          currency?: string | null;
+          display_picture?: string | null;
+          banner_image?: string | null;
+          timezone?: string | null;
+          address_line1?: string | null;
+          address_line2?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          metadata?: Json | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+          credits: number | null;
+          trial_credits: number | null; // Add this line
+        };
+        Relationships: [];
+      };
+
       customers: {
         Row: {
           id: string;
@@ -204,37 +293,9 @@ export interface Database {
         ];
       };
 
-      users: {
-        Row: {
-          avatar_url: string | null;
-          billing_address: Json | null;
-          full_name: string | null;
-          id: string;
-          payment_method: Json | null;
-        };
-        Insert: {
-          avatar_url?: string | null;
-          billing_address?: Json | null;
-          full_name?: string | null;
-          id: string;
-          payment_method?: Json | null;
-        };
-        Update: {
-          avatar_url?: string | null;
-          billing_address?: Json | null;
-          full_name?: string | null;
-          id?: string;
-          payment_method?: Json | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'users_id_fkey';
-            columns: ['id'];
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          }
-        ];
-      };
+      // 
+      // Chats
+      // 
 
       chat_scopes: {
         Row: {
@@ -278,6 +339,43 @@ export interface Database {
             referencedColumns: ['id'];
           }
         ];
+      };
+
+      scopes: {
+        Row: {
+          id: string;
+          type: string; // USER-DEFINED enum (scope_type)
+          name: string;
+          description: string | null;
+          context: Json;
+          llm_preferences: Json | null;
+          template_id: string | null;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          name: string;
+          description?: string | null;
+          context: Json;
+          llm_preferences?: Json | null;
+          template_id?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          type?: string;
+          name?: string;
+          description?: string | null;
+          context?: Json;
+          llm_preferences?: Json | null;
+          template_id?: string | null;
+          metadata?: Json | null;
+          updated_at?: string;
+        };
       };
 
       chats: {
@@ -458,6 +556,10 @@ export interface Database {
           }
         ];
       };
+
+      // 
+      // Personalities
+      // 
 
       tones: {
         Row: {
@@ -710,6 +812,60 @@ export interface Database {
         ];
       };
 
+      tone_analysis: {
+        Row: {
+          id: string;
+          email_id: string;
+          personality_id: string;
+          tone_id: string;
+          sentiment: string | null;
+          context: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email_id: string;
+          personality_id: string;
+          tone_id: string;
+          sentiment?: string | null;
+          context?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          email_id?: string;
+          personality_id?: string;
+          tone_id?: string;
+          sentiment?: string | null;
+          context?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tone_analysis_email_id_fkey';
+            columns: ['email_id'];
+            referencedRelation: 'emails';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tone_analysis_personality_id_fkey';
+            columns: ['personality_id'];
+            referencedRelation: 'personalities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tone_analysis_tone_id_fkey';
+            columns: ['tone_id'];
+            referencedRelation: 'tones';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+
+      // 
+      // Knowledgebase
+      // 
+
       knowledge_base: {
         Row: {
           id: string;
@@ -784,6 +940,10 @@ export interface Database {
           }
         ];
       };
+
+      // 
+      // Files
+      // 
 
       files: {
         Row: {
@@ -999,6 +1159,10 @@ export interface Database {
         };
       };
 
+      // 
+      // Emails
+      // 
+
       email_accounts: {
         Row: {
           id: string;
@@ -1128,55 +1292,9 @@ export interface Database {
         ];
       };
 
-      tone_analysis: {
-        Row: {
-          id: string;
-          email_id: string;
-          personality_id: string;
-          tone_id: string;
-          sentiment: string | null;
-          context: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          email_id: string;
-          personality_id: string;
-          tone_id: string;
-          sentiment?: string | null;
-          context?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          email_id?: string;
-          personality_id?: string;
-          tone_id?: string;
-          sentiment?: string | null;
-          context?: string | null;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'tone_analysis_email_id_fkey';
-            columns: ['email_id'];
-            referencedRelation: 'emails';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'tone_analysis_personality_id_fkey';
-            columns: ['personality_id'];
-            referencedRelation: 'personalities';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'tone_analysis_tone_id_fkey';
-            columns: ['tone_id'];
-            referencedRelation: 'tones';
-            referencedColumns: ['id'];
-          }
-        ];
-      };
+      // 
+      // Audio, Text-to-Speech, Speech-to-text and Voice Messages
+      // 
 
       audio_transcriptions: {
         Row: {
@@ -1289,6 +1407,10 @@ export interface Database {
           }
         ];
       };
+
+      // 
+      // LLMs (Language Models)
+      // 
 
       llm_providers: {
         Row: {
@@ -1513,93 +1635,9 @@ export interface Database {
         };
       };
 
-      accounts: {
-        Row: {
-          id: string;
-          type: Database['public']['Enums']['account_type'];
-          name: string;
-          domain: string | null;
-          organization_number: string | null;
-          tax_id: string | null;
-          contact_emails: string[] | null;
-          contact_phone: string | null;
-          website: string | null;
-          billing_address: Json | null;
-          payment_method: Json | null;
-          currency: string | null;
-          display_picture: string | null;
-          banner_image: string | null;
-          timezone: string | null;
-          address_line1: string | null;
-          address_line2: string | null;
-          city: string | null;
-          state: string | null;
-          zip_code: string | null;
-          metadata: Json | null;
-          status: string;
-          created_at: string;
-          updated_at: string;
-          credits: number | null;
-          trial_credits: number | null; // Add this line
-        };
-        Insert: {
-          id?: string;
-          type: Database['public']['Enums']['account_type'];
-          name: string;
-          domain?: string | null;
-          organization_number?: string | null;
-          tax_id?: string | null;
-          contact_emails?: string[] | null;
-          contact_phone?: string | null;
-          website?: string | null;
-          billing_address?: Json | null;
-          payment_method?: Json | null;
-          currency?: string | null;
-          display_picture?: string | null;
-          banner_image?: string | null;
-          timezone?: string | null;
-          address_line1?: string | null;
-          address_line2?: string | null;
-          city?: string | null;
-          state?: string | null;
-          zip_code?: string | null;
-          metadata?: Json | null;
-          status?: string;
-          created_at?: string;
-          updated_at?: string;
-          credits: number | null;
-          trial_credits: number | null; // Add this line
-        };
-        Update: {
-          id?: string;
-          type?: Database['public']['Enums']['account_type'];
-          name?: string;
-          domain?: string | null;
-          organization_number?: string | null;
-          tax_id?: string | null;
-          contact_emails?: string[] | null;
-          contact_phone?: string | null;
-          website?: string | null;
-          billing_address?: Json | null;
-          payment_method?: Json | null;
-          currency?: string | null;
-          display_picture?: string | null;
-          banner_image?: string | null;
-          timezone?: string | null;
-          address_line1?: string | null;
-          address_line2?: string | null;
-          city?: string | null;
-          state?: string | null;
-          zip_code?: string | null;
-          metadata?: Json | null;
-          status?: string;
-          created_at?: string;
-          updated_at?: string;
-          credits: number | null;
-          trial_credits: number | null; // Add this line
-        };
-        Relationships: [];
-      };
+      // 
+      // Entites: Users, Accounts, Teams, Roles, Permission Schemes
+      // 
 
       teams: {
         Row: {
@@ -1760,6 +1798,38 @@ export interface Database {
         ];
       };
 
+      users: {
+        Row: {
+          avatar_url: string | null;
+          billing_address: Json | null;
+          full_name: string | null;
+          id: string;
+          payment_method: Json | null;
+        };
+        Insert: {
+          avatar_url?: string | null;
+          billing_address?: Json | null;
+          full_name?: string | null;
+          id: string;
+          payment_method?: Json | null;
+        };
+        Update: {
+          avatar_url?: string | null;
+          billing_address?: Json | null;
+          full_name?: string | null;
+          id?: string;
+          payment_method?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'users_id_fkey';
+            columns: ['id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+
       account_teams: {
         Row: {
           id: string;
@@ -1804,6 +1874,10 @@ export interface Database {
         ];
       };
 
+      // 
+      // Notifications
+      // 
+
       notifications: {
         Row: {
           id: string;
@@ -1841,6 +1915,10 @@ export interface Database {
           }
         ];
       };
+
+      // 
+      // Audit Logs, Activity Logs, Login Sessions, Recent Devices, System Settings
+      // 
 
       audit_logs: {
         Row: {
@@ -2015,6 +2093,10 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      // 
+      // Templates, Template Versions, Template Usage, 
+      // 
       
       templates: {
         Row: {
@@ -2112,42 +2194,9 @@ export interface Database {
         };
       };
 
-      scopes: {
-        Row: {
-          id: string;
-          type: string; // USER-DEFINED enum (scope_type)
-          name: string;
-          description: string | null;
-          context: Json;
-          llm_preferences: Json | null;
-          template_id: string | null;
-          metadata: Json | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          type: string;
-          name: string;
-          description?: string | null;
-          context: Json;
-          llm_preferences?: Json | null;
-          template_id?: string | null;
-          metadata?: Json | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          type?: string;
-          name?: string;
-          description?: string | null;
-          context?: Json;
-          llm_preferences?: Json | null;
-          template_id?: string | null;
-          metadata?: Json | null;
-          updated_at?: string;
-        };
-      };
+      // 
+      // Classification Rules, Routing History, Routing Errors
+      // 
 
       classification_rules: {
         Row: {
@@ -2182,7 +2231,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      
+            
       routing_history: {
         Row: {
           id: string;

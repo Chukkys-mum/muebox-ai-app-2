@@ -98,8 +98,8 @@ export const getUserDetails = async (
           .insert([
             {
               id: user.id,
-              full_name: user.user_metadata?.full_name || user.email,
-              avatar_url: user.user_metadata?.avatar_url,
+              full_name: user.user_metadata?.full_name || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
               email: user.email
             }
           ])

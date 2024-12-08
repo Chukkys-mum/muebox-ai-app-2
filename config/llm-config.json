@@ -1,0 +1,293 @@
+{
+    "models": {
+      "Conversation": [
+        {
+          "name": "ChatGPT",
+          "description": "General-purpose conversational AI.",
+          "apiEndpoint": "https://api.openai.com/v1/chat/completions",
+          "keyEnvVariable": "NEXT_PUBLIC_OPENAI_API_KEY",
+          "bestFor": ["creative", "general"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Claude",
+          "description": "Focused on safety and helpfulness in dialogues.",
+          "apiEndpoint": "https://api.anthropic.com/v1/completions",
+          "keyEnvVariable": "ANTHROPIC_API_KEY",
+          "bestFor": ["dialogue", "content"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "Bard",
+          "description": "Google’s conversational AI integrated with Workspace.",
+          "apiEndpoint": "https://bard.googleapis.com/v1",
+          "keyEnvVariable": "GOOGLE_BARD_API_KEY",
+          "bestFor": ["workspace", "creative"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "BlenderBot",
+          "description": "Conversational AI with focus on dialogue.",
+          "apiEndpoint": "https://api.meta.com/v1/blenderbot",
+          "keyEnvVariable": "META_API_KEY",
+          "bestFor": ["extended_dialogue"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "OpenAssistant",
+          "description": "Open-source conversational AI.",
+          "apiEndpoint": "https://api.openassistant.com/v1/chat",
+          "keyEnvVariable": "OPENASSISTANT_API_KEY",
+          "bestFor": ["open_source_conversation"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Grok",
+          "description": "Integrated with X (formerly Twitter) for conversational tasks.",
+          "apiEndpoint": "https://api.xai.com/v1/grok",
+          "keyEnvVariable": "XAI_API_KEY",
+          "bestFor": ["social_media_integration"],
+          "supportsFineTuning": false
+        }
+      ],
+      "Coding": [
+        {
+          "name": "Codex",
+          "description": "Specializes in generating and understanding code.",
+          "apiEndpoint": "https://api.openai.com/v1/completions",
+          "keyEnvVariable": "NEXT_PUBLIC_OPENAI_API_KEY",
+          "bestFor": ["code_generation"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "GPT-Neo",
+          "description": "Open-source alternative for code tasks.",
+          "apiEndpoint": "https://api.eleutherai.com/v1/completions",
+          "keyEnvVariable": "ELEUTHER_AI_API_KEY",
+          "bestFor": ["open_source_code_tasks"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "GPT-J",
+          "description": "Focused on code and efficiency.",
+          "apiEndpoint": "https://api.eleutherai.com/v1/completions",
+          "keyEnvVariable": "ELEUTHER_AI_API_KEY",
+          "bestFor": ["efficient_code_generation"],
+          "supportsFineTuning": true
+        }
+      ],
+      "Multilingual": [
+        {
+          "name": "Aleph Alpha",
+          "description": "AI with advanced support for European languages.",
+          "apiEndpoint": "https://api.aleph-alpha.com/v1/completions",
+          "keyEnvVariable": "ALEPH_ALPHA_API_KEY",
+          "bestFor": ["european_languages"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "LLaMA",
+          "description": "Handles multiple languages effectively.",
+          "apiEndpoint": "https://api.meta.com/v1/completions",
+          "keyEnvVariable": "META_AI_API_KEY",
+          "bestFor": ["multilingual_tasks"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Bloom",
+          "description": "Open-access multilingual model.",
+          "apiEndpoint": "https://api.huggingface.co/bloom",
+          "keyEnvVariable": "HUGGINGFACE_API_KEY",
+          "bestFor": ["multilingual_open_access"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Tongyi-Qianwen",
+          "description": "Supports multilingual tasks with Alibaba Cloud.",
+          "apiEndpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+          "keyEnvVariable": "ALIYUN_API_KEY",
+          "bestFor": ["enterprise_multilingual"],
+          "supportsFineTuning": false
+        }
+      ],
+      "Content Creation": [
+        {
+          "name": "Jasper",
+          "description": "Specializes in content and copy generation.",
+          "apiEndpoint": "https://api.jasper.ai/v1/completions",
+          "keyEnvVariable": "JASPER_API_KEY",
+          "bestFor": ["marketing", "advertising"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Writer",
+          "description": "Enterprise LLM for personalized content creation.",
+          "apiEndpoint": "https://api.writer.ai/v1/completions",
+          "keyEnvVariable": "WRITER_API_KEY",
+          "bestFor": ["enterprise_content_creation"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Claude",
+          "description": "Supports content generation with clarity and alignment.",
+          "apiEndpoint": "https://api.anthropic.com/v1/completions",
+          "keyEnvVariable": "ANTHROPIC_API_KEY",
+          "bestFor": ["dialogue", "content"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "GPT-4",
+          "description": "Versatile content generation capabilities.",
+          "apiEndpoint": "https://api.openai.com/v1/completions",
+          "keyEnvVariable": "NEXT_PUBLIC_OPENAI_API_KEY",
+          "bestFor": ["creative", "general"],
+          "supportsFineTuning": true
+        }
+      ],
+      "Image-Related": [
+        {
+          "name": "DALL-E",
+          "description": "Text-to-image generation capabilities.",
+          "apiEndpoint": "https://api.openai.com/v1/images/generations",
+          "keyEnvVariable": "NEXT_PUBLIC_OPENAI_API_KEY",
+          "bestFor": ["text_to_image"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "Gemini",
+          "description": "Multi-modal, including image and text integration.",
+          "apiEndpoint": "https://gemini.googleapis.com/v1",
+          "keyEnvVariable": "GEMINI_API_KEY",
+          "bestFor": ["multi_modal_integration"],
+          "supportsFineTuning": false
+        }
+      ],
+      "General-Purpose": [
+        {
+          "name": "GPT-4",
+          "description": "Advanced general-purpose model.",
+          "apiEndpoint": "https://api.openai.com/v1/completions",
+          "keyEnvVariable": "NEXT_PUBLIC_OPENAI_API_KEY",
+          "bestFor": ["advanced_general", "creative"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Claude",
+          "description": "General-purpose with emphasis on ethical AI.",
+          "apiEndpoint": "https://api.anthropic.com/v1/completions",
+          "keyEnvVariable": "ANTHROPIC_API_KEY",
+          "bestFor": ["ethical", "dialogue"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "Bard",
+          "description": "General-purpose conversational AI with task-specific support.",
+          "apiEndpoint": "https://bard.googleapis.com/v1",
+          "keyEnvVariable": "GOOGLE_BARD_API_KEY",
+          "bestFor": ["workspace_integration", "general_conversation"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "LLaMA 2",
+          "description": "Flexible for multiple general use cases.",
+          "apiEndpoint": "https://api.meta.com/v1/completions",
+          "keyEnvVariable": "META_AI_API_KEY",
+          "bestFor": ["multilingual", "general_tasks"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "NeMo",
+          "description": "Customizable for various purposes.",
+          "apiEndpoint": "https://api.nvidia.com/v1/completions",
+          "keyEnvVariable": "NVIDIA_API_KEY",
+          "bestFor": ["customization", "general_purpose"],
+          "supportsFineTuning": true
+        }
+      ],
+      "Enterprise AI": [
+        {
+          "name": "Azure OpenAI Service",
+          "description": "Provides OpenAI models with enterprise integration.",
+          "apiEndpoint": "https://api.openai.azure.com/v1/completions",
+          "keyEnvVariable": "AZURE_OPENAI_API_KEY",
+          "bestFor": ["enterprise_integration", "security"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Turing-NLG",
+          "description": "Microsoft’s enterprise-friendly LLM.",
+          "apiEndpoint": "https://api.microsoft.com/v1/turing-nlg",
+          "keyEnvVariable": "TURING_NLG_API_KEY",
+          "bestFor": ["enterprise_friendly", "general"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "Tongyi-Qianwen",
+          "description": "Enterprise-ready with multilingual features.",
+          "apiEndpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+          "keyEnvVariable": "ALIYUN_API_KEY",
+          "bestFor": ["multilingual_enterprise", "tasks"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "Writer",
+          "description": "Enterprise-focused content creation.",
+          "apiEndpoint": "https://api.writer.ai/v1/completions",
+          "keyEnvVariable": "WRITER_API_KEY",
+          "bestFor": ["enterprise_content_creation", "marketing"],
+          "supportsFineTuning": true
+        }
+      ],
+      "Specialized Tasks": [
+        {
+          "name": "Command R",
+          "description": "Fine-tuned for retrieval-augmented generation.",
+          "apiEndpoint": "https://api.cohere.ai/v1/completions",
+          "keyEnvVariable": "COHERE_API_KEY",
+          "bestFor": ["retrieval_augmented", "specific_tasks"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Flan",
+          "description": "Fine-tuned for zero-shot and task-specific capabilities.",
+          "apiEndpoint": "https://api.google.com/v1/flan",
+          "keyEnvVariable": "FLAN_API_KEY",
+          "bestFor": ["zero_shot", "task_specific"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "PALM",
+          "description": "Multi-modal AI for complex reasoning tasks.",
+          "apiEndpoint": "https://palm.googleapis.com/v1",
+          "keyEnvVariable": "PALM_API_KEY",
+          "bestFor": ["complex_reasoning", "multi_modal"],
+          "supportsFineTuning": false
+        },
+        {
+          "name": "BigScience T0",
+          "description": "Fine-tuned for zero-shot learning.",
+          "apiEndpoint": "https://api.huggingface.co/t0",
+          "keyEnvVariable": "HUGGINGFACE_API_KEY",
+          "bestFor": ["zero_shot_learning", "specialized_tasks"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Mixtral",
+          "description": "Specialized in mixture-of-experts techniques.",
+          "apiEndpoint": "https://api.mistral.ai/v1/mixtral",
+          "keyEnvVariable": "MIXTRAL_API_KEY",
+          "bestFor": ["mixture_of_experts", "efficient_computation"],
+          "supportsFineTuning": true
+        },
+        {
+          "name": "Mistral 7B",
+          "description": "High-performance open-access LLM.",
+          "apiEndpoint": "https://api.mistral.ai/v1/completions",
+          "keyEnvVariable": "MISTRAL_API_KEY",
+          "bestFor": ["high_performance", "open_access"],
+          "supportsFineTuning": true
+        }
+      ]
+    }
+  }
+  

@@ -10,7 +10,10 @@ type Product = Tables<'products'>;
 type Price = Tables<'prices'>;
 
 // Change to control trial period length
-const TRIAL_PERIOD_DAYS = 0;
+const TRIAL_PERIOD_DAYS = 14;
+const TRIAL_CREDITS = 2000;
+const SUBSCRIPTION_CREDITS = 20000;
+const SUBSCRIPTION_PERIOD_DAYS = 28;
 
 // Note: supabaseAdmin uses the SERVICE_ROLE_KEY which you must only use in a secure server-side context
 // as it has admin privileges and overwrites RLS policies!
@@ -39,6 +42,7 @@ const upsertProductRecord = async (product: Stripe.Product) => {
 
 const upsertPriceRecord = async (
   price: Stripe.Price,
+  account_id: string,  
   retryCount = 0,
   maxRetries = 3
 ) => {
@@ -53,7 +57,8 @@ const upsertPriceRecord = async (
     unit_amount: price.unit_amount ?? null,
     interval: price.recurring?.interval ?? null,
     interval_count: price.recurring?.interval_count ?? null,
-    trial_period_days: price.recurring?.trial_period_days ?? TRIAL_PERIOD_DAYS
+    trial_period_days: price.recurring?.trial_period_days ?? TRIAL_PERIOD_DAYS,
+    account_id
   };
 
   const { error: upsertError } = await supabaseAdmin
@@ -64,7 +69,7 @@ const upsertPriceRecord = async (
     if (retryCount < maxRetries) {
       console.log(`Retry attempt ${retryCount + 1} for price ID: ${price.id}`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      await upsertPriceRecord(price, retryCount + 1, maxRetries);
+      await upsertPriceRecord(price, account_id, retryCount + 1, maxRetries); // Pass account_id here
     } else {
       throw new Error(
         `Price insert/update failed after ${maxRetries} retries: ${upsertError.message}`
@@ -100,7 +105,11 @@ const deletePriceRecord = async (price: Stripe.Price) => {
 const upsertCustomerToSupabase = async (uuid: string, customerId: string) => {
   const { error: upsertError } = await supabaseAdmin
     .from('customers')
-    .upsert([{ id: uuid, stripe_customer_id: customerId }]);
+    .upsert([{ 
+      id: uuid, 
+      stripe_customer_id: customerId,
+      account_id: uuid // Since accounts and users are 1:1 in this case
+    }]);
 
   if (upsertError)
     throw new Error(
@@ -252,7 +261,7 @@ const manageSubscriptionStatusChange = async (
     metadata: subscription.metadata,
     status: subscription.status,
     price_id: subscription.items.data[0].price.id,
-    quantity,  // Using the extracted quantity
+    quantity,
     cancel_at_period_end: subscription.cancel_at_period_end,
     cancel_at: subscription.cancel_at
       ? toDateTime(subscription.cancel_at).toISOString()
@@ -275,7 +284,9 @@ const manageSubscriptionStatusChange = async (
       : null,
     trial_end: subscription.trial_end
       ? toDateTime(subscription.trial_end).toISOString()
-      : null
+      : null,
+    credits: subscription.status === 'active' ? SUBSCRIPTION_CREDITS : 0,
+    trial_credits: subscription.trial_end ? TRIAL_CREDITS : null
   };
 
   const { error: upsertError } = await supabaseAdmin

@@ -35,13 +35,14 @@ export interface ChatScope extends WithTimestamps, WithStatus {
     files: string[];
     knowledgeBases: string[];
     emails: string[];
+    folders: string[]; 
   };
   settings?: {
-    chatName: string;
-    botName: string;
-    textToSpeech: boolean;
-    speechToText: boolean;
-    llmId: string; // Changed from llmModel to llmId
+    chatName?: string;
+    botName?: string;
+    textToSpeech?: boolean;
+    speechToText?: boolean;
+    llmId?: string; // Changed from llmModel to llmId
   };
 }
 

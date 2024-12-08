@@ -397,9 +397,8 @@ export default function Assistant(props: Props) {
 
           <div className="mt-5 flex flex-col items-center justify-center md:flex-row">
             <p className="text-center text-xs text-zinc-500 dark:text-white">
-              Ai may produce inaccurate information
-              about people, places, or facts. Consider checking important
-              information.
+              Ai can make mistakes by producing inaccurate information
+              about people, places, or facts. Checking important information.
             </p>
           </div>
         </div>

@@ -1,3 +1,5 @@
+// /app/supabase-provider.tsx
+
 'use client';
 
 import type { Database } from '@/types/types_db';

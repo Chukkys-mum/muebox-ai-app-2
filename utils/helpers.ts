@@ -1,3 +1,5 @@
+// /utils/helpers.ts
+
 import { Database } from '@/types/types_db';
 
 type Price = Database['public']['Tables']['prices']['Row'];
@@ -56,20 +58,16 @@ export const toDateTime = (secs: number) => {
 export const calculateTrialEndUnixTimestamp = (
   trialPeriodDays: number | null | undefined
 ) => {
-  // Check if trialPeriodDays is null, undefined, or less than 2 days
-  if (
-    trialPeriodDays === null ||
-    trialPeriodDays === undefined ||
-    trialPeriodDays < 2
-  ) {
+  // Only check for null/undefined now
+  if (trialPeriodDays === null || trialPeriodDays === undefined) {
     return undefined;
   }
-
-  const currentDate = new Date(); // Current date and time
+  
+  const currentDate = new Date();
   const trialEnd = new Date(
     currentDate.getTime() + (trialPeriodDays + 1) * 24 * 60 * 60 * 1000
-  ); // Add trial days
-  return Math.floor(trialEnd.getTime() / 1000); // Convert to Unix timestamp in seconds
+  );
+  return Math.floor(trialEnd.getTime() / 1000);
 };
 
 const toastKeyMap: { [key: string]: string[] } = {

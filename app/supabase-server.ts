@@ -1,3 +1,5 @@
+// /app/supabase-server.ts
+
 import { Database } from '@/types/types_db';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';

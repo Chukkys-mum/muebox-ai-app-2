@@ -1,3 +1,5 @@
+// /components/pricing/index.tsx
+
 'use client';
 
 // @ts-nocheck

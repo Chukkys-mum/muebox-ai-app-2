@@ -1,13 +1,12 @@
 // app/components/FileSystemWrapper.tsx
 
 'use client';
-
 import { FileService } from '@/services/files/FileService';
 import FileListGrid from '@/components/dashboard/files/FileListGrid';
 import FolderListGrid from '@/components/dashboard/files/FolderListGrid';
 import { handleEntityAction } from '@/app/actions/fileSystemActions';
 import { useToast } from '@/components/ui/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FileRow, FileAction } from '@/types';
 
 export default function FileSystemWrapper() {
@@ -15,6 +14,31 @@ export default function FileSystemWrapper() {
   const { toast } = useToast();
   const [files, setFiles] = useState<FileRow[]>([]);
   const [folders, setFolders] = useState<FileRow[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const fileService = new FileService();
+      try {
+        const [initialFiles, initialFolders] = await Promise.all([
+          fileService.fetchFiles(),
+          fileService.fetchFolders()
+        ]);
+        setFiles(initialFiles);
+        setFolders(initialFolders);
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load files and folders',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []); // Run once on mount
 
   const handleAction = async (action: FileAction, entityId: string, entityType: 'file' | 'folder') => {
     try {
@@ -55,14 +79,13 @@ export default function FileSystemWrapper() {
 
   return (
     <div className="space-y-6">
-      <FolderListGrid 
-        folders={folders} 
+      <FolderListGrid
+        folders={folders}
         onAction={(action, folderId) => handleAction(action, folderId, 'folder')}
         isLoading={isLoading}
       />
-      
-      <FileListGrid 
-        files={files} 
+      <FileListGrid
+        files={files}
         onAction={(action, fileId) => handleAction(action, fileId, 'file')}
         isLoading={isLoading}
       />

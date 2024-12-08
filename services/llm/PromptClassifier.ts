@@ -151,12 +151,14 @@
   
     public async addRule(rule: ClassificationRule): Promise<void> {
       try {
+        const adaptedRule = adaptClassificationRuleForDB(rule);
+    
         const { error } = await this.supabase
           .from('classification_rules')
-          .insert([adaptClassificationRuleForDB(rule)]);
-  
+          .insert(adaptedRule);
+    
         if (error) throw error;
-  
+    
         this.rules.set(rule.id, rule);
         await this.updateScoringMatrix();
       } catch (error) {

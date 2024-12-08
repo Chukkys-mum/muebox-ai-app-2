@@ -13,72 +13,68 @@ import {
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
 
-async function getViewProps(params: { id: string }) {
-  const cookieStore = await cookies();
-  const preferredSignInView = cookieStore.get('preferredSignInView');
-  const viewTypes = getViewTypes();
-  
-  if (typeof params.id === 'string' && viewTypes.includes(params.id)) {
-    return params.id;
-  }
-  
-  return getDefaultSignInView(preferredSignInView?.value || null);
-}
-
 export default async function SignIn({
   params,
-  searchParams,
+  searchParams
 }: {
   params: { id: string };
   searchParams: { disable_button: boolean };
 }) {
-  try {
-    const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
-    const redirectMethod = getRedirectMethod();
-    
-    const supabase = createClient();
-    const [sessionResult, viewProp] = await Promise.all([
-      supabase.auth.getSession(),
-      getViewProps(params)
-    ]);
+  const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
+  const viewTypes = getViewTypes();
+  const redirectMethod = getRedirectMethod();
+  const supabase = createClient();
 
-    const session = sessionResult.data.session;
-    
-    if (session && params.id !== 'update_password') {
-      return redirect('/dashboard/main');
-    }
+  // Handle async param access with Promise.all
+  const [requestedViewParams, searchParamsValue] = await Promise.all([
+    Promise.resolve(params),
+    Promise.resolve(searchParams)
+  ]);
 
-    if (viewProp !== params.id) {
+  const requestedView = String(requestedViewParams.id);
+  const isValidView = viewTypes.includes(requestedView);
+
+  // Handle view determination
+  let viewProp: string;
+  if (isValidView) {
+    viewProp = requestedView;
+  } else {
+    // Get preferred view from cookies
+    const cookieStore = await cookies();
+    const preferredSignInView = cookieStore.get('preferredSignInView')?.value || null;
+    viewProp = getDefaultSignInView(preferredSignInView);
+    
+    // Redirect to the correct view
+    if (viewProp !== requestedView) {
       return redirect(`/dashboard/signin/${viewProp}`);
     }
+  }
 
-    if (!session && viewProp === 'update_password') {
-      return redirect('/dashboard/signin');
-    }
+  // Check auth status
+  const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-
-    return (
-      <ErrorBoundary fallback={<DefaultAuth viewProp="error"><div>Authentication Error</div></DefaultAuth>}>
-        <DefaultAuth viewProp={viewProp}>
-          <AuthUI
-            viewProp={viewProp}
-            user={user}
-            allowPassword={allowPassword}
-            allowEmail={allowEmail}
-            redirectMethod={redirectMethod}
-            disableButton={searchParams?.disable_button}
-            allowOauth={allowOauth}
-          />
-        </DefaultAuth>
-      </ErrorBoundary>
-    );
-  } catch (error) {
-    if ((error as any)?.digest?.includes('NEXT_REDIRECT')) {
-      throw error;
-    }
-    console.error('Sign in error:', error);
+  // Handle auth-based redirects
+  if (user && viewProp !== 'update_password') {
+    return redirect('/dashboard/main');
+  } 
+  
+  if (!user && viewProp === 'update_password') {
     return redirect('/dashboard/signin');
   }
+
+  return (
+    <DefaultAuth viewProp={viewProp}>
+      <div>
+        <AuthUI
+          viewProp={viewProp}
+          user={user}
+          allowPassword={allowPassword}
+          allowEmail={allowEmail}
+          redirectMethod={redirectMethod}
+          disableButton={searchParamsValue.disable_button}
+          allowOauth={allowOauth}
+        />
+      </div>
+    </DefaultAuth>
+  );
 }

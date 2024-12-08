@@ -50,8 +50,8 @@ const DashboardLayout: React.FC<Props> = (props: Props) => {
   });
 
   return (
-    <UserContext.Provider value={props.user}>
-      <UserDetailsContext.Provider value={props.user}>
+    <UserContext.Provider value={props.user || null}>
+      <UserDetailsContext.Provider value={props.userDetails}>
         <OpenContext.Provider value={{ open, setOpen }}>
           <PlanContext.Provider value={{ plan, setPlan }}>
             <ProductsContext.Provider value={props.products}>

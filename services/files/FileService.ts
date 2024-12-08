@@ -22,7 +22,7 @@ export class FileServiceError extends Error {
 }
 
 export class FileService extends BaseService {
-  async fetchFiles(): Promise<FileRow[]> {
+  async fetchFiles(userId: string): Promise<FileRow[]> {
     try {
       const { data, error } = await this.supabase
         .from('files')
@@ -33,6 +33,23 @@ export class FileService extends BaseService {
       return (data?.map(file => this.transformDatabaseFile(file)) || []);
     } catch (err) {
       logger.error('Failed to fetch files', { error: err });
+      return [];
+    }
+  }
+
+  async getAvailableFolders(userId: string): Promise<FileRow[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('type', 'folder')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (error) throw error;
+      return data ? data.map(folder => this.transformDatabaseFile(folder)) : [];
+    } catch (err) {
+      console.error('getAvailableFolders:', err);
       return [];
     }
   }
@@ -315,6 +332,230 @@ export class FileService extends BaseService {
     } catch (err) {
       console.error("getStorageUsage:", err);
       return { used: 0, total: 0, breakdown: {} };
+    }
+  }
+
+  // Add these methods to FileService class
+
+  async copyFile(fileId: string, destinationFolderId: string | null): Promise<FileOperationResult> {
+    try {
+      // First, get the original file
+      const { data: originalFile, error: fetchError } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!originalFile) throw new Error('Original file not found');
+
+      // Create a copy of the file with new destination
+      const newFile = {
+        ...originalFile,
+        id: undefined, // Let the database generate a new ID
+        parent_id: destinationFolderId,
+        file_name: `Copy of ${originalFile.file_name}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // If it's a file (not a folder), handle file content copying
+      if (originalFile.type === 'file' && originalFile.file_path) {
+        const newPath = `${destinationFolderId || 'root'}/${newFile.file_name}`;
+        
+        // Copy the actual file in storage
+        const { error: storageError } = await this.supabase
+          .storage
+          .from('files')
+          .copy(originalFile.file_path, newPath);
+
+        if (storageError) throw storageError;
+        newFile.file_path = newPath;
+      }
+
+      // Insert the new file record
+      return this.genericFileOperation(
+        async () => await this.supabase
+          .from("files")
+          .insert([newFile])
+          .select()
+          .single(),
+        'File copied successfully'
+      );
+    } catch (err) {
+      console.error('copyFile:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to copy file'
+      };
+    }
+  }
+
+  async editFile(fileId: string, updates: {
+    content?: string;
+    metadata?: Record<string, any>;
+  }): Promise<FileOperationResult> {
+    try {
+      // Get the current file first
+      const { data: currentFile, error: fetchError } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!currentFile) throw new Error('File not found');
+
+      // Prepare updates
+      const fileUpdates: Partial<FileRow> = {
+        updated_at: new Date().toISOString(),
+        metadata: {
+          ...currentFile.metadata,
+          ...updates.metadata,
+          last_edited: new Date().toISOString()
+        }
+      };
+
+      // If content is being updated and there's a file path
+      if (updates.content && currentFile.file_path) {
+        // Update the file content in storage
+        const { error: storageError } = await this.supabase
+          .storage
+          .from('files')
+          .update(
+            currentFile.file_path,
+            new Blob([updates.content], { type: currentFile.mime_type || 'text/plain' }),
+            {
+              cacheControl: '3600',
+              upsert: true
+            }
+          );
+
+        if (storageError) throw storageError;
+      }
+
+      // Update the file record
+      return this.genericFileOperation(
+        async () => await this.supabase
+          .from("files")
+          .update(this.transformToDatabase(fileUpdates))
+          .eq("id", fileId)
+          .select()
+          .single(),
+        'File updated successfully'
+      );
+    } catch (err) {
+      console.error('editFile:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to edit file'
+      };
+    }
+  }
+
+  async createCopy(fileId: string, newName?: string): Promise<FileOperationResult> {
+    try {
+      // Get the original file
+      const { data: originalFile, error: fetchError } = await this.supabase
+        .from("files")
+        .select("*")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!originalFile) throw new Error('Original file not found');
+
+      // Create a copy in the same folder
+      return await this.copyFile(fileId, originalFile.parent_id);
+    } catch (err) {
+      console.error('createCopy:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create copy'
+      };
+    }
+  }
+
+  async saveToDraft(fileId: string): Promise<FileOperationResult> {
+    return this.genericFileOperation(
+      async () => await this.supabase
+        .from("files")
+        .update({ 
+          status: 'draft' as FileStatus,
+          metadata: {
+            draft_saved_at: new Date().toISOString()
+          }
+        })
+        .eq("id", fileId)
+        .select()
+        .single(),
+      'File saved to drafts'
+    );
+  }
+
+  async getFileContent(fileId: string): Promise<string | null> {
+    try {
+      const { data: file, error: fetchError } = await this.supabase
+        .from("files")
+        .select("file_path")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!file?.file_path) return null;
+
+      const { data, error: downloadError } = await this.supabase
+        .storage
+        .from('files')
+        .download(file.file_path);
+
+      if (downloadError) throw downloadError;
+
+      return await data.text();
+    } catch (err) {
+      console.error('getFileContent:', err);
+      return null;
+    }
+  }
+
+  async saveFileContent(fileId: string, content: string): Promise<FileOperationResult> {
+    try {
+      const { data: file, error: fetchError } = await this.supabase
+        .from("files")
+        .select("file_path, mime_type")
+        .eq("id", fileId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!file?.file_path) throw new Error('File path not found');
+
+      // Upload the new content
+      const { error: uploadError } = await this.supabase
+        .storage
+        .from('files')
+        .update(
+          file.file_path,
+          new Blob([content], { type: file.mime_type || 'text/plain' }),
+          {
+            cacheControl: '3600',
+            upsert: true
+          }
+        );
+
+      if (uploadError) throw uploadError;
+
+      // Update the file record
+      return await this.updateFile(fileId, {
+        metadata: {
+          last_modified: new Date().toISOString()
+        }
+      });
+    } catch (err) {
+      console.error('saveFileContent:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to save file content'
+      };
     }
   }
 

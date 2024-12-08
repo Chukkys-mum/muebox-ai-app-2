@@ -1,0 +1,1229 @@
+/* custom.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* ---------------------------------------------------------------------------- */
+/* Account profile Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* General container for account profile */
+.account-profile-container {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--background);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Input fields */
+.account-profile-container .input-field,
+.account-profile-container select,
+.account-profile-container .dropdown {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--muted);
+  color: var(--foreground);
+  margin-bottom: 1rem;
+}
+
+.account-profile-container .input-field:focus,
+.account-profile-container select:focus,
+.account-profile-container .dropdown:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* Small fields for currency, language, and country code */
+.account-profile-container .small-field {
+  max-width: 172px;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--muted);
+  color: var(--foreground);
+  margin-bottom: 1rem;
+}
+
+/* Styling for dropdowns (currency, language, country code) */
+.account-profile-container .react-select__control {
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--foreground);
+}
+
+.account-profile-container .react-select__menu {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.account-profile-container .react-select__option {
+  color: var(--foreground);
+}
+
+.account-profile-container .react-select__option--is-selected {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.account-profile-container .react-select__option--is-focused {
+  background-color: var(--muted);
+}
+
+/* Dark mode adjustments */
+.dark .account-profile-container {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.dark .input-field,
+.dark select,
+.dark .dropdown {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+}
+
+.dark .react-select__control {
+  background-color: var(--popover);
+  border-color: var(--border);
+  color: var(--popover-foreground);
+}
+
+.dark .react-select__menu {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.dark .react-select__option--is-selected {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+
+/* ---------------------------------------------------------------------------- */
+/* Checkbox Styling */
+/* ---------------------------------------------------------------------------- */
+
+
+input.defaultCheckbox {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+    border: 1px solid hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    position: relative;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  input.defaultCheckbox::before {
+    content: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6.66662 10.115L12.7946 3.98633L13.7379 4.92899L6.66662 12.0003L2.42395 7.75766L3.36662 6.81499L6.66662 10.115Z' fill='white'/%3E%3C/svg%3E%0A");
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+  }
+  
+  input:checked.defaultCheckbox {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary-foreground));
+  }
+  
+  input:checked.defaultCheckbox::before {
+    opacity: 1;
+  }
+  
+  input.defaultCheckbox:hover,
+  input.defaultCheckbox:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--foreground));
+  }
+  
+
+
+/* ---------------------------------------------------------------------------- */
+/* Chatbot / Support chatStyling */
+/* ---------------------------------------------------------------------------- */
+ 
+/* Updated Chatbot Styling */
+
+.chatbot-container {
+  position: fixed;
+  bottom: 1.75rem; /* 28px */
+  right: 1.25rem; /* 20px */
+  max-width: 27.87rem; /* ~446px */
+  width: 100%;
+  transform-origin: bottom right;
+  z-index: 1045;
+  transition: 0.3s ease-out;
+  padding-bottom: 1.75rem;
+}
+
+.chatbot-pill {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.25rem;
+  width: 9rem; /* 144px */
+  height: 3rem; /* 48px */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground));
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0px 0px 32px 0px rgba(36, 40, 46, 0.12);
+  transition: 0.3s ease;
+  overflow: hidden;
+}
+
+.dark .chatbot-pill {
+  box-shadow: 0px 0px 32px 10px rgba(0, 0, 0, 0.41);
+}
+
+.chatbot-pill:hover {
+  background-color: hsl(var(--primary)/0.9) !important;
+}
+
+.chatbot-pill.active {
+  border-radius: 50%;
+  width: 3rem; /* 48px */
+}
+
+.chatbot-pill.active .chatbot-title {
+  display: none;
+}
+
+.chatbot-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chatbot-window {
+  background-color: hsl(var(--background));
+  border-radius: 1.25rem; /* 20px */
+  box-shadow: 0px 0px 32px 0px rgba(36, 40, 46, 0.12);
+  width: 100%;
+  height: 34.5rem; /* 552px */
+  position: absolute;
+  bottom: 4.5rem; /* 72px */
+  right: 0;
+  z-index: 1045;
+  transform: scale(0);
+  opacity: 0;
+  transform-origin: bottom right;
+  transition: 0.3s ease-out;
+  overflow: hidden;
+}
+
+.dark .chatbot-window {
+  box-shadow: 0px 0px 32px 10px rgba(0, 0, 0, 0.41);
+}
+
+.chatbot-window.show {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.chatbot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.chatbot-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.chatbot-status {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #22c55e;
+  border-radius: 9999px;
+}
+
+.chatbot-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chatbot-close:hover {
+  background-color: hsl(var(--muted));
+}
+
+.chatbot-body {
+  height: calc(100% - 8rem); /* Subtract header and input heights */
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.chatbot-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.message {
+  max-width: 80%;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  animation: messageSlide 0.3s ease-out;
+}
+
+.message.user {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  margin-left: auto;
+}
+
+.message.bot {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  margin-right: auto;
+}
+
+.chatbot-input-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  border-top: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+}
+
+.chatbot-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: hsl(var(--muted));
+  border-radius: 9999px;
+}
+
+.chatbot-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+}
+
+.chatbot-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.chatbot-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; /* 36px */
+  height: 2.25rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chatbot-send:hover {
+  background-color: hsl(var(--primary)/0.9);
+}
+
+@keyframes messageSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Media Queries */
+@media (min-width: 640px) {
+  .chatbot-container {
+    right: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .chatbot-container {
+    right: 1.75rem;
+  }
+}
+
+@keyframes typing {
+  0% { width: 0 }
+  100% { width: 100% }
+}
+
+.typing-animation {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 2s steps(40, end);
+}
+
+/* ---------------------------------------------------------------------------- */
+/* Dropdowns Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Dropdowns */
+.dropdown {
+    border: 1px solid hsl(var(--border)); /* Outline for dropdown */
+    background: hsl(var(--background));
+    border-radius: var(--radius);
+  }
+  
+  .dropdown-item {
+    color: hsl(var(--foreground)); /* Text color */
+  }
+  
+  .dropdown-item:hover {
+    background: hsl(var(--accent)); /* Background on hover */
+  }
+  
+/* ---------------------------------------------------------------------------- */
+/* (Profile) navbar Dropdown  Styling */
+/* ---------------------------------------------------------------------------- */
+
+  .radix-dropdown-content {
+    z-index: 50 !important;
+  }
+  
+  .radix-dropdown-trigger {
+    position: relative;
+    z-index: 45;
+  }
+  
+  [data-radix-popper-content-wrapper] {
+    z-index: 50 !important;
+  }
+  
+  /* Optional: Add transition for smoother hover effects */
+  .hover\:bg-\[\#3373B1\]:hover {
+    transition: background-color 0.2s ease;
+  }
+
+
+/* ---------------------------------------------------------------------------- */
+/* File upload Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* File Upload Styling */
+.file-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-upload-container label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.file-upload-container input {
+  display: none; /* Hide default input field */
+}
+
+.file-upload-container .file-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.file-upload-container .file-upload-box:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.dark .file-upload-container .file-upload-box {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+
+/* ---------------------------------------------------------------------------- */
+/* Footer Styling */
+/* ---------------------------------------------------------------------------- */
+
+:root {
+    --footer-button-height: 64px; /* Set this to the desired height */
+  }
+  
+
+
+/* ---------------------------------------------------------------------------- */
+/* Table Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Table Search Filter */
+
+.table-search-filter {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  
+  /* Dropdown Button Style */
+  .dropdown-button {
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--foreground);
+    padding: 8px 16px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .dropdown-button:hover {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  
+  /* Ellipsis in Actions Column */
+  .actions-dropdown {
+    position: relative;
+  }
+  
+  .actions-dropdown .dropdown-trigger {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  
+  /* Contextual Menu for Actions */
+  .actions-dropdown .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    z-index: 10;
+  }
+  
+  /* Pagination Style */
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+  }
+  
+  .pagination button {
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--foreground);
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .pagination button:hover {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  
+  /* Add New Button Style */
+  .add-new-button {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .add-new-button:hover {
+    background-color: var(--primary-foreground);
+    color: var(--primary);
+  }
+  
+  /* Chip Style */
+  .chip {
+    background-color: var(--muted);
+    color: var(--muted-foreground);
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    display: inline-block;
+    margin: 4px;
+    font-size: 12px;
+    font-weight: bold;
+  }  
+  
+  /* Specific Styles for Dark Mode */
+  :root.dark .dropdown-button {
+    background-color: var(--sidebar-background);
+    color: var(--sidebar-foreground);
+  }
+  
+  :root.dark .pagination button {
+    background-color: var(--sidebar-background);
+    color: var(--sidebar-foreground);
+  }
+  
+  :root.dark .add-new-button {
+    background-color: var(--sidebar-primary);
+    color: var(--sidebar-primary-foreground);
+  }
+  
+  :root.dark .chip {
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
+.table-cell-centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+/* ---------------------------------------------------------------------------- */
+/* Logs Pages Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Logs Container */
+.logs-container {
+  @apply space-y-6 p-6;
+}
+
+/* Tabs Navigation */
+.logs-tabs {
+  @apply flex space-x-2 border-b border-border mb-6;
+}
+
+.logs-tab {
+  @apply px-4 py-2 text-sm font-medium transition-colors relative;
+  color: hsl(var(--muted-foreground));
+}
+
+.logs-tab.active {
+  color: hsl(var(--foreground));
+}
+
+.logs-tab.active::after {
+  content: '';
+  @apply absolute bottom-0 left-0 right-0 h-0.5;
+  background-color: hsl(var(--primary));
+  transform: translateY(1px);
+}
+
+/* Logs Filter Bar */
+.logs-filter-bar {
+  @apply flex items-center justify-between mb-4;
+}
+
+/* Status Indicators */
+.log-status {
+  @apply px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.log-status-ok {
+  @apply bg-green-100 text-green-800;
+  .dark & {
+    @apply bg-green-900 text-green-100;
+  }
+}
+
+.log-status-error {
+  @apply bg-red-100 text-red-800;
+  .dark & {
+    @apply bg-red-900 text-red-100;
+  }
+}
+
+.log-status-warn {
+  @apply bg-yellow-100 text-yellow-800;
+  .dark & {
+    @apply bg-yellow-900 text-yellow-100;
+  }
+}
+
+/* Log Table Specific */
+.logs-table {
+  @apply w-full border border-border rounded-lg overflow-hidden;
+}
+
+.logs-table th {
+  @apply bg-muted px-4 py-3 text-left text-sm font-medium text-muted-foreground;
+}
+
+.logs-table td {
+  @apply px-4 py-3 text-sm border-t border-border;
+}
+
+/* Action Buttons */
+.logs-action-button {
+  @apply inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.logs-action-button:hover {
+  background-color: hsl(var(--secondary)/0.8);
+}
+
+.logs-download-button {
+  @apply logs-action-button bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+/* Loading & Error States */
+.logs-loading {
+  @apply flex items-center justify-center p-8 text-muted-foreground;
+}
+
+.logs-error {
+  @apply flex items-center justify-center p-8 text-destructive;
+}
+
+
+/* ---------------------------------------------------------------------------- */
+/* Log: Activity log */
+/* ---------------------------------------------------------------------------- */
+
+
+/* Add under the Logs Pages Styling section */
+
+/* Select Input Styling */
+.logs-select {
+  @apply h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors;
+  min-width: 150px;
+}
+
+.logs-select:focus {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Table Container */
+.logs-table-container {
+  @apply rounded-md border border-border;
+  overflow: hidden;
+}
+
+/* Table Header Cell */
+.logs-table th {
+  @apply h-10 px-4 text-left align-middle font-medium text-muted-foreground;
+  background-color: hsl(var(--muted));
+}
+
+/* Table Body Cell */
+.logs-table td {
+  @apply p-4 align-middle;
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* Table Row Hover */
+.logs-table tr:hover {
+  background-color: hsl(var(--muted)/0.5);
+}
+
+/* Status Badges */
+.log-status {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+.log-status-success {
+  background-color: hsl(var(--success));
+  color: hsl(var(--success-foreground));
+}
+
+.log-status-warning {
+  background-color: hsl(var(--warning));
+  color: hsl(var(--warning-foreground));
+}
+
+.log-status-error {
+  background-color: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+/* Pagination Styling */
+.logs-pagination {
+  @apply flex items-center justify-between px-2;
+}
+
+.logs-pagination-button {
+  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors;
+  @apply h-9 px-4;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.logs-pagination-button:hover {
+  background-color: hsl(var(--secondary)/0.8);
+}
+
+.logs-pagination-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+
+/* ---------------------------------------------------------------------------- */
+/* Log: Audit log */
+/* ---------------------------------------------------------------------------- */
+
+/* Add to custom.css under the Logs Pages Styling section */
+
+/* Audit Log Specific Styling */
+.audit-log-status {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.audit-status-200 {
+  @apply bg-green-100 text-green-800;
+  .dark & {
+    @apply bg-green-900 text-green-100;
+  }
+}
+
+.audit-status-404 {
+  @apply bg-yellow-100 text-yellow-800;
+  .dark & {
+    @apply bg-yellow-900 text-yellow-100;
+  }
+}
+
+.audit-status-500 {
+  @apply bg-red-100 text-red-800;
+  .dark & {
+    @apply bg-red-900 text-red-100;
+  }
+}
+
+/* Login Sessions Specific Styling */
+.session-status {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+.session-status-ok {
+  @apply bg-green-100 text-green-800;
+  .dark & {
+    @apply bg-green-900 text-green-100;
+  }
+}
+
+.session-status-warn {
+  @apply bg-yellow-100 text-yellow-800;
+  .dark & {
+    @apply bg-yellow-900 text-yellow-100;
+  }
+}
+
+.session-status-err {
+  @apply bg-red-100 text-red-800;
+  .dark & {
+    @apply bg-red-900 text-red-100;
+  }
+}
+
+/* Device Indicator */
+.device-indicator {
+  @apply inline-flex items-center gap-2 text-sm;
+}
+
+.device-icon {
+  @apply w-4 h-4 text-muted-foreground;
+}
+
+/* Location Badge */
+.location-badge {
+  @apply inline-flex items-center gap-1.5 text-sm text-muted-foreground;
+}
+
+
+
+/* ---------------------------------------------------------------------------- */
+/* Modal Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Modals */
+.modal {
+    border: 1px solid hsl(var(--border)); /* Outline for modal */
+    border-radius: var(--radius);
+    background: hsl(var(--background));
+  }
+  
+  .modal-header,
+  .modal-footer {
+    background: hsl(var(--secondary));
+  }
+  
+  .modal-body {
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+
+
+/* ---------------------------------------------------------------------------- */
+/* Navbar Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Enforce navbar background color for both light and dark modes */
+
+@layer base {
+    /* Light mode styling */
+
+    /* Define navbar background color for light mode */
+    :root {
+        --navbar-background-light: #00509D; /* Light mode blue background */
+        --navbar-background-dark: inherit; /* Ensures it inherits the default dark color (black) */
+        --navbar-text: #ffffff; /* White text */
+        --navbar-icon-hover: #3373B1; /* Icon hover color */
+    }
+    
+    /* Light mode navbar styling */
+    .navbar {
+        background-color: var(--navbar-background-light) !important; /* Set blue background in light mode */
+        color: var(--navbar-text); /* White text */
+    }
+    
+    /* Dark mode overrides for the navbar */
+    .dark .navbar {
+        background-color: var(--navbar-background-dark) !important; /* Inherit dark background color */
+        color: var(--navbar-text); /* White text */
+    }
+    
+    /* Navbar icons and logo styling */
+    .navbar .navbar-icons .icon {
+        color: var(--navbar-text);
+    }
+    
+    .navbar .navbar-icons .icon:hover {
+        color: var(--navbar-icon-hover);
+    }
+    
+    .navbar-logo {
+        width: auto;
+        height: auto;
+    }
+}
+  
+
+/* ---------------------------------------------------------------------------- */
+/* (Navbar) Search Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Search Box Styling */
+.search-box {
+    /* Light mode fill */
+    background-color: transparent;
+    fill: #3373B1;
+    color: #ffffff; /* White text */
+  }
+  
+  .search-box input {
+    color: #ffffff; /* Text color in search box */
+    background-color: #3373B1; /* Light mode fill */
+  }
+  
+  .search-box input::placeholder {
+    color: #ffffff; /* White placeholder text */
+  }
+  
+  .search-box .search-icon {
+    color: #ffffff; /* White icon color */
+  }
+  
+  /* Dark Mode Styling */
+  .dark .search-box {
+    fill: #71717A; /* Dark mode fill color */
+    background-color: transparent;
+  }
+  
+  .dark .search-box input {
+    background-color: #71717A; /* Dark mode fill */
+  }
+  
+  .dark .search-box input::placeholder {
+    color: #ffffff; /* White placeholder text in dark mode */
+  }
+  
+  .dark .search-box .search-icon {
+    color: #ffffff; /* White icon color in dark mode */
+  }
+  
+/* ---------------------------------------------------------------------------- */
+/* Notifications Styling */
+/* ---------------------------------------------------------------------------- */
+
+
+/* Base notification card styling */
+.notification-card {
+  @apply relative flex flex-col gap-2;
+  background-color: hsl(var(--notification-bg));
+  border: 1px solid hsl(var(--notification-border));
+  border-radius: var(--radius);
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Unread notification styling */
+.notification-card.unread {
+  background-color: hsl(var(--notification-unread-bg));
+}
+
+/* Hover states */
+.notification-card:hover {
+  background-color: hsl(var(--notification-hover));
+}
+
+/* Typography */
+.notification-card .notification-title {
+  @apply text-sm font-semibold;
+  color: hsl(var(--notification-text));
+}
+
+.notification-card .notification-message {
+  @apply text-sm;
+  color: hsl(var(--notification-text));
+}
+
+.notification-card .notification-timestamp {
+  @apply text-xs;
+  color: hsl(var(--notification-timestamp));
+}
+
+/* Status indicators */
+.notification-card .status-indicator {
+  @apply absolute right-4 top-4 h-2 w-2 rounded-full;
+}
+
+.notification-card .status-indicator.unread {
+  background-color: hsl(var(--notification-success));
+}
+
+/* Actions section */
+.notification-card .actions {
+  @apply flex items-center gap-2 mt-2;
+}
+
+.notification-card .action-button {
+  @apply text-sm px-3 py-1 rounded-md transition-colors;
+  color: hsl(var(--notification-muted));
+  background-color: transparent;
+}
+
+.notification-card .action-button:hover {
+  background-color: hsl(var(--notification-action-hover));
+}
+
+/* Container layouts */
+.notifications-container {
+  @apply space-y-4;
+}
+
+/* Empty state */
+.notifications-empty {
+  @apply flex flex-col items-center justify-center py-8;
+  color: hsl(var(--notification-muted));
+}
+
+/* Animation for new notifications */
+@keyframes notification-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notification-card.new {
+  animation: notification-appear 0.3s ease-out forwards;
+}
+
+/* ---------------------------------------------------------------------------- */
+/* Panels (Chat Context and Personality) Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Ensure buttons are on top */
+.toggle-button {
+  position: fixed;
+  z-index: 50;
+}
+
+/* Add space between toggle buttons */
+.toggle-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* 20px spacing */
+}
+
+/* Panel z-index */
+.panel {
+  z-index: 40; /* Ensure it's below toggle buttons */
+}
+
+
+
+/* ---------------------------------------------------------------------------- */
+/* Sidebar Styling */
+/* ---------------------------------------------------------------------------- */
+
+/* Responsive breakpoints */
+
+/* Sidebar Styles */
+.sidebar-container {
+    position: fixed;
+    top: 64px; /* Match the height of the navbar */
+    left: 0;
+    width: 240px; /* Adjust based on sidebar width */
+    height: calc(100vh - 64px); /* Full height minus the navbar */
+    background-color: #242424;
+    border-right: 1px solid #e0e0e0;
+  }
+  
+  .sidebar-section-title {
+    padding: 16px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #666;
+    text-transform: uppercase;
+  }
+  
+  /* Remove any gap or margin above the first section */
+  .sidebar-links {
+    padding-top: 0;
+    margin-top: 0;
+  }
+  
+  
+  @media (max-width: 1024px) {
+    /* Sidebar collapses on screens smaller than 1024px */
+    .sidebar-collapsed {
+      width: 60px;
+    }
+  
+    .sidebar-expanded {
+      width: 240px;
+    }
+  
+    /* Hide sidebar entirely on smaller screens */
+    .sidebar-hidden {
+      display: none;
+    }
+  }
+  
+  @media (min-width: 768px) and (max-width: 1024px) {
+    /* Adjust the sidebar on tablet sizes */
+    .sidebar-collapsed {
+      width: 80px;
+    }
+  
+    .sidebar-expanded {
+      width: 220px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    /* Mobile-specific adjustments */
+    .top-nav-mobile {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem;
+    }
+  
+    .sidebar {
+      display: none;
+    }
+  
+    .sidebar-mobile {
+      display: block;
+      position: absolute;
+      z-index: 50;
+      width: 80%;
+      height: 100vh;
+      background-color: var(--background-color);
+    }
+  }
+  
+/* Sidebar Light Mode Styling */
+.sidebar {
+    background-color: #242424; /* Dark grey background */
+    color: #ffffff !important; /* White text color */
+  }
+  
+  .sidebar .icon,
+  .sidebar .text {
+    color: #ffffff !important; /* White color for icons and text */
+  }
+  
+  /* Dark Mode Styling */
+  .dark .sidebar {
+    background-color: #0f1117; /* Retain dark mode color */
+    color: inherit; /* Use the existing text color */
+  }
+
+
+/* ---------------------------------------------------------------------------- */
+/* Other Styling */
+/* ---------------------------------------------------------------------------- */
+  
+  
+  /* Responsive Design */
+@media (max-width: 600px) {
+  .account-profile-container {
+    padding: 1.5rem;
+  }
+
+  .account-profile-container .action-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .file-upload-container .file-upload-box {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+  }
+}

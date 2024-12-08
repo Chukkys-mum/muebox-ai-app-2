@@ -1,3 +1,5 @@
+// /components/sidebar/Sidebar.tsx
+
 'use client';
 
 import {
@@ -29,6 +31,7 @@ import { Scrollbars } from 'react-custom-scrollbars-2';
 import { HiX } from 'react-icons/hi';
 import { HiBolt, HiOutlineArrowRightOnRectangle } from 'react-icons/hi2';
 import { Button } from '../ui/button';
+
 export interface SidebarProps extends PropsWithChildren {
   routes: IRoute[];
   [x: string]: any;
@@ -47,36 +50,50 @@ function Sidebar(props: SidebarProps) {
 
   const handleCheckout = async (price: Price) => {
     setPriceIdLoading(price.id);
-
+  
     if (!user) {
       setPriceIdLoading(undefined);
-      return router.push('/dashboard/signin/signup');
+      if (router) {
+        router.push('/dashboard/signin/signup');
+      } else {
+        window.location.href = '/dashboard/signin/signup';
+      }
+      return;
     }
-
+  
     const { errorRedirect, sessionId } = await checkoutWithStripe(
       price,
       currentPath
     );
-
+  
     if (errorRedirect) {
       setPriceIdLoading(undefined);
-      return router.push(errorRedirect);
+      if (router) {
+        router.push(errorRedirect);
+      } else {
+        window.location.href = errorRedirect;
+      }
+      return;
     }
-
+  
     if (!sessionId) {
       setPriceIdLoading(undefined);
-      return router.push(
-        getErrorRedirect(
-          currentPath,
-          'An unknown error occurred.',
-          'Please try again later or contact a system administrator.'
-        )
+      const errorUrl = getErrorRedirect(
+        currentPath,
+        'An unknown error occurred.',
+        'Please try again later or contact a system administrator.'
       );
+      if (router) {
+        router.push(errorUrl);
+      } else {
+        window.location.href = errorUrl;
+      }
+      return;
     }
-
+  
     const stripe = await getStripe();
     stripe?.redirectToCheckout({ sessionId });
-
+  
     setPriceIdLoading(undefined);
   };
 
@@ -129,19 +146,22 @@ function Sidebar(props: SidebarProps) {
                   <Avatar className="min-h-10 min-w-10">
                     <AvatarImage src={user?.user_metadata.avatar_url} />
                     <AvatarFallback className="font-bold dark:text-foreground">
-                      {userDetails.full_name
-                        ? `${userDetails.full_name[0]}`
-                        : `${user?.user_metadata.email[0].toUpperCase()}`}
+                      {userDetails?.full_name
+                        ? userDetails.full_name[0].toUpperCase()
+                        : user?.user_metadata?.email
+                        ? user.user_metadata.email.slice(0, 2).toUpperCase()
+                        : 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </Link>
 
                 <Link href="/dashboard/settings">
-                  <p className="ml-2 mr-2 w-max max-w-100% flex items-center text-sm font-semibold leading-none text-foreground dark:text-white">
-                    {user?.user_metadata.full_name
-                      ? user?.user_metadata.full_name
-                      : `User`}
-                  </p>
+                <p className="ml-2 mr-2 w-max max-w-100% flex items-center text-sm font-semibold leading-none text-foreground dark:text-white">
+                  {userDetails?.full_name || 
+                  (user?.user_metadata?.email 
+                    ? user.user_metadata.email.split('@')[0]  // This will display the part before @ in the email
+                    : 'User')}
+                </p>
                 </Link>
                 <form
                   className="w-full"

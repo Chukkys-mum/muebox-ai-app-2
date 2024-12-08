@@ -14,29 +14,28 @@ export async function handleRequest(
   router: AppRouterInstance | null = null
 ): Promise<boolean | void> {
   try {
-    // Prevent default form submission refresh
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    // Await the request function and handle potential errors
     const redirectUrl: string = await requestFunc(formData);
     
+    console.log('Redirect URL:', redirectUrl); // Add this log
+
     if (router) {
-      // If client-side router is provided, use it to redirect
       return router.push(redirectUrl);
     } else {
-      // Otherwise, redirect server-side
-      return await redirectToPath(redirectUrl);
+      window.location.href = redirectUrl; // Change this line
+      return;
     }
   } catch (error) {
     console.error('Request handling error:', error);
-    // Handle the error appropriately
     const errorUrl = '/dashboard/signin/signup?error=Sign up failed.&error_description=An unexpected error occurred';
     
     if (router) {
       return router.push(errorUrl);
     } else {
-      return await redirectToPath(errorUrl);
+      window.location.href = errorUrl; // Change this line
+      return;
     }
   }
 }

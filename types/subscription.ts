@@ -28,6 +28,32 @@ export interface StripeAddress {
   state?: string | null;
 }
 
+export type SimplifiedSubscription = {
+  id: string;
+  status: SubscriptionStatus;
+  trial_end: number | null;
+  trial_start: number | null;
+  items: {
+    data: Array<{
+      id: string;
+      price: {
+        id: string;
+        recurring?: {
+          interval?: PricingPlanInterval;
+          interval_count?: number;
+        } | null;
+      };
+    }>;
+  };
+  created: number;
+  current_period_start: number;
+  current_period_end: number;
+  canceled_at: number | null;
+  cancel_at: number | null;
+  ended_at: number | null;
+  cancel_at_period_end: boolean;
+};
+
 export interface StripeMetadata {
   [name: string]: string | number | null;
 }

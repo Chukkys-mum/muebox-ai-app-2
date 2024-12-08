@@ -1,16 +1,9 @@
-// /components/dashboard/ai-chat/index.tsx
+// components/dashboard/ai-chat/index.tsx
 
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useChat } from 'ai/react';
-import DashboardLayout from '@/components/layout';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,8 +14,16 @@ import { Database } from '@/types/types_db';
 import { User } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave } from 'react-icons/hi2';
 import { ChatScopePanel } from '@/components/chat-scope/ChatScopePanel';
+import { ChatScope } from '@/types'; 
+import { KnowledgeBaseFile } from '@/services/files/KnowledgeBaseService';
+import { FileRow } from '@/types';
+import DashboardLayout from '@/components/layout';
+import Sidebar from '@/components/sidebar/Sidebar';
+import { ChatSidebar } from '@/components/dashboard/ai-chat/ChatSidebar';
+import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave, HiPaperAirplane, HiPaperClip, HiFaceSmile, HiCodeBracket } from 'react-icons/hi2';
+import { generateChatName, requestSpeechPermissions } from '@/utils/chatUtils';
+import { v4 as uuidv4 } from 'uuid';   
 
 type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
 type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
@@ -33,8 +34,6 @@ interface Props {
   subscription: SubscriptionWithProduct | null;
   userDetails: { [x: string]: any } | null;
 }
-
-
 
 const chatScopes = [
   { value: 'general', label: 'General Chat' },
@@ -57,8 +56,12 @@ export default function Chat(props: Props) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isChatScopePanelOpen, setIsChatScopePanelOpen] = useState(false);
-  const [chatScopeState, setChatScopeState] = useState({
-    personality: 'neutral',
+  const [availableKnowledgeBases, setAvailableKnowledgeBases] = useState<KnowledgeBaseFile[]>([]);
+  const [availableFolders, setAvailableFolders] = useState<FileRow[]>([]);
+  const [chatScopeState, setChatScopeState] = useState<ChatScope>({
+    id: '',
+    name: '',
+    personality_profile_id: 'neutral',
     template: '',
     context: '',
     goals: '',
@@ -70,23 +73,86 @@ export default function Chat(props: Props) {
       urls: [],
       files: [],
       knowledgeBases: [],
-      emails: []
+      emails: [],
+      folders: [],
     },
     settings: {
       chatName: '',
-      botName: '',
+      botName: 'Zach',
       textToSpeech: false,
-      speechToText: false
-    }
+      speechToText: false,
+      llmId: 'gpt-3.5-turbo',
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: 'active',
   });
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput, setMessages } = useChat({
     api: '/api/chatAPI',
-    body: { model, chatScope: chatScopeState.personality, personality: chatScopeState.personality },
+    body: { model, chatScope: chatScopeState.personality_profile_id, personality: chatScopeState.personality_profile_id },
   });
 
-  const handleChatScopeChange = (newScope: Partial<typeof chatScopeState>) => {
-    setChatScopeState(prev => ({ ...prev, ...newScope }));
+  const initializeChat = (userInput: string) => {
+    const chatName = generateChatName(userInput);
+    
+    setChatScopeState(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings!,
+        chatName: chatName,
+      }
+    }));
+
+    const botIntroduction = `
+      Hello! I'm ${chatScopeState.settings?.botName || 'Zach'}, your AI assistant. You can change my name anytime, either here in the chat or in the Chat Scope settings.
+
+      I'm here to help with anything you need—whether it's answering questions, brainstorming ideas, or tackling tasks.
+
+      Would you like to enable speech-to-text and text-to-speech features? If so, I'll need your permission to access your microphone and speakers.
+
+      How can I assist you today?
+    `;
+
+    setMessages([{ id: uuidv4(), role: 'assistant', content: botIntroduction }]);
+
+    requestSpeechPermissions(handleChatScopeChange, chatScopeState);
+  };
+
+  useEffect(() => {
+    const fetchKnowledgeBasesAndFolders = async () => {
+      try {
+        const [kbResponse, foldersResponse] = await Promise.all([
+          fetch('/api/knowledgebases'),
+          fetch('/api/folders')
+        ]);
+
+        if (kbResponse.ok && foldersResponse.ok) {
+          const kbData = await kbResponse.json();
+          const foldersData = await foldersResponse.json();
+          setAvailableKnowledgeBases(kbData);
+          setAvailableFolders(foldersData);
+        } else {
+          console.error('Error fetching knowledge bases or folders');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    fetchKnowledgeBasesAndFolders();
+
+    if (messages.length === 0) {
+      initializeChat('');
+    }
+  }, []);
+
+  const handleChatScopeChange = (newScope: Partial<ChatScope>) => {
+    setChatScopeState(prev => ({
+      ...prev,
+      ...newScope,
+      context: typeof newScope.context === 'string' ? newScope.context : JSON.stringify(newScope.context),
+    }));
   };
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -137,150 +203,126 @@ export default function Chat(props: Props) {
   };
 
   return (
-    <DashboardLayout
-      userDetails={props.userDetails}
-      user={props.user}
-      products={props.products}
-      subscription={props.subscription}
-      title="Chat"
-      description="AI Chat"
-    >
-      <div className="relative flex w-full flex-col pt-[20px] md:pt-0">
-        <Image
-          width="340"
-          height="181"
-          src={theme === 'dark' ? Bgdark.src : Bg.src}
-          className="absolute left-[20%] top-[50%] z-[0] w-[200px] translate-y-[-50%] md:left-[35%] lg:left-[38%] xl:left-[38%] xl:w-[350px] "
-          alt=""
-        />
-        <div className="mx-auto flex min-h-[75vh] w-full max-w-[1000px] flex-col xl:min-h-[85vh]">
-          {/* Model Selection */}
-          <div className={`flex w-full flex-col ${messages.length > 0 ? 'mb-5' : 'mb-auto'}`}>
-            <div className="z-[2] mx-auto mb-5 flex w-full max-w-[600px] flex-col space-y-2 rounded-md bg-zinc-100 p-4 dark:bg-zinc-800">
-              <div className="flex justify-between">
+    <div className="flex h-screen">
+      <ChatSidebar
+        className="w-64 border-r"
+        chats={[]} // Add your chats data here
+        participants={{}}
+        messages={{}}
+        users={{}}
+      />
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              } mb-4`}
+            >
+              <div className="flex items-end">
                 <div
-                  className={`flex cursor-pointer items-center justify-center py-2 transition-all duration-75 ${
-                    model === 'gpt-3.5-turbo'
-                      ? 'bg-white dark:bg-zinc-950'
-                      : 'transparent'
-                  } h-[70xp] w-[174px] rounded-md text-base font-semibold text-foreground dark:text-white`}
-                  onClick={() => setModel('gpt-3.5-turbo')}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                    message.role === 'user'
+                      ? 'bg-blue-500'
+                      : 'bg-zinc-300 dark:bg-zinc-700'
+                  }`}
                 >
-                  GPT-3.5
-                </div>
-                <div
-                  className={`flex cursor-pointer items-center justify-center py-2 transition-colors duration-75 ${
-                    model === 'gpt-4-1106-preview'
-                      ? 'bg-white dark:bg-zinc-950'
-                      : 'transparent'
-                  } h-[70xp] w-[174px] rounded-md text-base font-semibold text-foreground dark:text-white`}
-                  onClick={() => setModel('gpt-4-1106-preview')}
-                >
-                  GPT-4
-                </div>
-              </div>
-            </div>
-          </div>
-  
-          {/* Chat History */}
-          <div className="mb-auto flex w-full flex-col space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                <div className="flex items-end">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                      message.role === 'user'
-                        ? 'bg-blue-500'
-                        : 'bg-zinc-300 dark:bg-zinc-700'
-                    }`}
-                  >
-                    {message.role === 'user' ? (
-                      <HiUser className="h-5 w-5 text-white" />
-                    ) : (
-                      <HiSparkles className="h-5 w-5 text-zinc-800 dark:text-white" />
-                    )}
-                  </div>
-                  <div
-                    className={`ml-2 rounded-lg px-3 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
-                    }`}
-                  >
-                    <p className="text-sm">{message.content}</p>
-                  </div>
-                  {message.role === 'assistant' && (
-                    <Button
-                      onClick={() => speakMessage(message.content)}
-                      className="ml-2 p-2"
-                      disabled={isSpeaking}
-                    >
-                      <HiSpeakerWave className="h-5 w-5" />
-                    </Button>
+                  {message.role === 'user' ? (
+                    <HiUser className="h-5 w-5 text-white" />
+                  ) : (
+                    <HiSparkles className="h-5 w-5 text-zinc-800 dark:text-white" />
                   )}
                 </div>
+                <div
+                  className={`ml-2 rounded-lg px-3 py-2 ${
+                    message.role === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                </div>
+                {message.role === 'assistant' && (
+                  <Button
+                    onClick={() => speakMessage(message.content)}
+                    className="ml-2 p-2"
+                    disabled={isSpeaking}
+                  >
+                    <HiSpeakerWave className="h-5 w-5" />
+                  </Button>
+                )}
               </div>
-            ))}
-          </div>
-  
-          {/* Chat Input */}
-          <form onSubmit={handleSendMessage} className="mt-5 flex justify-end">
+            </div>
+          ))}
+        </div>
+
+        {/* Chat Input */}
+        <div className="border-t p-4">
+          <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
             <Input
               ref={inputRef}
-              className="mr-2.5 h-full min-h-[54px] w-full px-5 py-5 focus:outline-0 dark:border-zinc-800 dark:placeholder:text-zinc-400"
+              className="flex-1"
               placeholder="Type your message here..."
               value={input}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
             />
-            <Button
-              type="button"
-              onClick={startListening}
-              className="mr-2 p-2"
-              disabled={isListening}
-            >
+            <Button type="button" onClick={startListening} disabled={isListening}>
               <HiMicrophone className="h-5 w-5" />
             </Button>
-            <Button
-              type="submit"
-              className="mt-auto flex h-[unset] w-[200px] items-center justify-center rounded-md px-4 py-5 text-base font-medium"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Thinking...' : 'Submit'}
+            <Button type="button">
+              <HiPaperClip className="h-5 w-5" />
+            </Button>
+            <Button type="button">
+              <HiFaceSmile className="h-5 w-5" />
+            </Button>
+            <Button type="button">
+              <HiCodeBracket className="h-5 w-5" />
+            </Button>
+            <Button type="button">
+              <HiMiniPencilSquare className="h-5 w-5" />
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              <HiPaperAirplane className="h-5 w-5" />
             </Button>
           </form>
-  
-          <div className="mt-5 flex flex-col items-center justify-center md:flex-row">
-            <p className="text-center text-xs text-zinc-500 dark:text-white">
-             AI may produce inaccurate information about people, places, or facts.
-             Consider checking important information.
-            </p>
-          </div>
         </div>
-  
-        {/* ChatScopePanel */}
-        
-        {isChatScopePanelOpen && (
-          <ChatScopePanel 
-            isOpen={isChatScopePanelOpen} 
-            onClose={() => setIsChatScopePanelOpen(false)}
-            chatScope={chatScopeState}
-            onChatScopeChange={handleChatScopeChange}
-          />
-        )}
-        
-        {/* Button to open ChatScopePanel */}
+
+        <div className="p-4">
+          <p className="text-center text-xs text-zinc-500 dark:text-white">
+            AI may produce inaccurate information about people, places, or facts.
+            Consider checking important information.
+          </p>
+        </div>
+      </div>
+
+      {/* ChatScopePanel */}
+      <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-50">
         <Button
-          onClick={() => setIsChatScopePanelOpen(true)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 transform"
+          onClick={() => setIsChatScopePanelOpen(!isChatScopePanelOpen)}
+          className={`h-32 w-8 rounded-l-md bg-[#F8F8F8] text-black hover:bg-[#F0F0F0] transition-all duration-300 ${
+            isChatScopePanelOpen ? 'translate-x-[400px]' : ''
+          }`}
+          style={{ 
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed'
+          }}
         >
           Chat Scope
         </Button>
-      </DashboardLayout>
+      </div>
+      
+      {isChatScopePanelOpen && (
+        <ChatScopePanel 
+          isOpen={isChatScopePanelOpen} 
+          onClose={() => setIsChatScopePanelOpen(false)}
+          chatScope={chatScopeState}
+          onChatScopeChange={handleChatScopeChange}
+          availableKnowledgeBases={availableKnowledgeBases}
+          availableFolders={availableFolders}
+        />
+      )}
+    </div>
   );
 }

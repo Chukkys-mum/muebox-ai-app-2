@@ -6,67 +6,83 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, X } from 'lucide-react';
 import { ChatScope } from '@/types/chat';
-import { FileRow } from '@/types';
 import { KnowledgeBase } from '@/types/knowledgeBase';
-import { EmailAccount } from '@/types/email';
+import { FileRow } from '@/types';
+import { Combobox } from '@/components/ui/combobox';
+import { Badge } from '@/components/ui/badge';
+import { useDropzone } from 'react-dropzone';
 
 interface SourcesTabProps {
   sources: ChatScope['sources'];
-  onSourcesChange: (newSources: Partial<ChatScope['sources']>) => void;
+  onSourcesChange: (newSources: ChatScope['sources']) => void;
   availableKnowledgeBases: KnowledgeBase[];
-  availableEmailAccounts: EmailAccount[];
+  availableFolders: FileRow[];
 }
 
 export function SourcesTab({ 
   sources, 
   onSourcesChange, 
   availableKnowledgeBases, 
-  availableEmailAccounts 
+  availableFolders 
 }: SourcesTabProps) {
   const [newUrl, setNewUrl] = useState('');
 
   const addUrl = () => {
     if (newUrl && !sources.urls.includes(newUrl)) {
-      onSourcesChange({ urls: [...sources.urls, newUrl] });
+      onSourcesChange({ ...sources, urls: [...sources.urls, newUrl] });
       setNewUrl('');
     }
   };
 
   const removeUrl = (urlToRemove: string) => {
-    onSourcesChange({ urls: sources.urls.filter(url => url !== urlToRemove) });
+    onSourcesChange({ ...sources, urls: sources.urls.filter(url => url !== urlToRemove) });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      // Here you would typically handle the file upload process
-      // For now, we'll just add the file names to the sources
-      const newFiles = Array.from(files).map(file => file.name);
-      onSourcesChange({ files: [...sources.files, ...newFiles] });
+  const handleKnowledgeBaseSelect = (kbId: string) => {
+    if (!sources.knowledgeBases.includes(kbId)) {
+      onSourcesChange({ ...sources, knowledgeBases: [...sources.knowledgeBases, kbId] });
     }
   };
+
+  const handleKnowledgeBaseRemove = (kbId: string) => {
+    onSourcesChange({ ...sources, knowledgeBases: sources.knowledgeBases.filter(id => id !== kbId) });
+  };
+
+  const handleFolderSelect = (folderId: string) => {
+    if (!sources.folders.includes(folderId)) {
+      onSourcesChange({ ...sources, folders: [...sources.folders, folderId] });
+    }
+  };
+
+  const handleFolderRemove = (folderId: string) => {
+    onSourcesChange({ ...sources, folders: sources.folders.filter(id => id !== folderId) });
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const newFiles = acceptedFiles.map(file => file.name);
+      onSourcesChange({ ...sources, files: [...sources.files, ...newFiles] });
+    }
+  });
 
   return (
     <div className="space-y-6">
       {/* File Upload */}
       <div className="space-y-2">
         <Label>Files</Label>
-        <div className="flex h-32 w-full items-center justify-center rounded-md border border-dashed border-zinc-300">
-          <input
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-          />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            <div className="flex flex-col items-center space-y-2">
-              <Upload className="h-8 w-8 text-zinc-400" />
-              <div className="text-sm text-zinc-600">
-                Drag and drop files or click to upload
-              </div>
+        <div 
+          {...getRootProps()} 
+          className={`flex h-32 w-full items-center justify-center rounded-md border border-dashed ${
+            isDragActive ? 'border-blue-500 bg-blue-50' : 'border-zinc-300'
+          }`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center space-y-2">
+            <Upload className="h-8 w-8 text-zinc-400" />
+            <div className="text-sm text-zinc-600">
+              {isDragActive ? 'Drop the files here' : 'Drag and drop files or click to upload'}
             </div>
-          </label>
+          </div>
         </div>
         {sources.files.length > 0 && (
           <div className="mt-2 space-y-2">
@@ -76,7 +92,7 @@ export function SourcesTab({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onSourcesChange({ files: sources.files.filter((_, i) => i !== index) })}
+                  onClick={() => onSourcesChange({ ...sources, files: sources.files.filter((_, i) => i !== index) })}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -122,34 +138,60 @@ export function SourcesTab({
         </div>
       </div>
 
-      {/* Knowledge Base */}
+      {/* Knowledge Bases */}
       <div className="space-y-2">
         <Label>Knowledge Bases</Label>
-        <select
-          className="w-full rounded-md border border-zinc-300 p-2"
-          value={sources.knowledgeBases[0] || ''}
-          onChange={(e) => onSourcesChange({ knowledgeBases: [e.target.value] })}
-        >
-          <option value="">Select a Knowledge Base</option>
-          {availableKnowledgeBases.map((kb) => (
-            <option key={kb.id} value={kb.id}>{kb.name}</option>
-          ))}
-        </select>
+        <Combobox
+          items={availableKnowledgeBases.map(kb => ({ id: kb.id, name: kb.name }))}
+          value=""
+          onChange={handleKnowledgeBaseSelect}
+          placeholder="Select a Knowledge Base"
+        />
+        <div className="flex flex-wrap gap-2 mt-2">
+          {sources.knowledgeBases.map((kbId) => {
+            const kb = availableKnowledgeBases.find(k => k.id === kbId);
+            return (
+              <Badge key={kbId} variant="secondary">
+                {kb?.name}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleKnowledgeBaseRemove(kbId)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Emails */}
+      {/* Folders */}
       <div className="space-y-2">
-        <Label>Email Integration</Label>
-        <select
-          className="w-full rounded-md border border-zinc-300 p-2"
-          value={sources.emails[0] || ''}
-          onChange={(e) => onSourcesChange({ emails: [e.target.value] })}
-        >
-          <option value="">Select an Email Account</option>
-          {availableEmailAccounts.map((account) => (
-            <option key={account.id} value={account.id}>{account.email_address}</option>
-          ))}
-        </select>
+        <Label>Folders</Label>
+        <Combobox
+          items={availableFolders.map(folder => ({ id: folder.id, name: folder.file_name }))}
+          value=""
+          onChange={handleFolderSelect}
+          placeholder="Select a Folder"
+        />
+        <div className="flex flex-wrap gap-2 mt-2">
+          {sources.folders.map((folderId) => {
+            const folder = availableFolders.find(f => f.id === folderId);
+            return (
+              <Badge key={folderId} variant="secondary">
+                {folder?.file_name}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFolderRemove(folderId)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -58,13 +58,17 @@ export function adaptClassificationRule(dbRule: DBClassificationRule): Classific
   };
 }
 
-export function adaptClassificationRuleForDB(rule: ClassificationRule): Partial<DBClassificationRule> {
+export function adaptClassificationRuleForDB(rule: ClassificationRule): Database['public']['Tables']['classification_rules']['Insert'] {
   return {
+    id: rule.id, // Include the id
     category: rule.category,
     patterns: rule.patterns,
     keywords: rule.keywords,
     weight: rule.weight,
     llm_mapping: rule.llmMapping,
-    min_confidence: rule.minConfidence
+    min_confidence: rule.minConfidence,
+    // Optionally include created_at and updated_at if needed
+    // created_at: new Date().toISOString(),
+    // updated_at: new Date().toISOString(),
   };
 }

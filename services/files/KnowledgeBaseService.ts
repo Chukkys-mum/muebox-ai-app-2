@@ -128,6 +128,23 @@ export class KnowledgeBaseService extends FileService {
     }
   });
 
+  async getAvailableKnowledgeBases(userId: string): Promise<KnowledgeBaseFile[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('files')
+        .select('*')
+        .eq('type', 'knowledge_base')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (error) throw error;
+      return data ? data.map(file => this.transformToKnowledgeBaseFile(file)) : [];
+    } catch (err) {
+      console.error('getAvailableKnowledgeBases:', err);
+      return [];
+    }
+  }
+
   async createKnowledgeBase(knowledgeBase: KnowledgeBaseCreateInput): Promise<FileOperationResult> {
     const fileRowData: Partial<FileRow> = {
       file_name: knowledgeBase.file_name,

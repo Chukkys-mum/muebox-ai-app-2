@@ -1,20 +1,44 @@
 {
   "extends": "./tsconfig/base.json",
   "compilerOptions": {
-    "incremental": false,
-    "importHelpers": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/supabase/*": [
+        "utils/supabase/*"
+      ],
+      "@/types/*": [
+        "types/*"
+      ]
     },
-    "typeRoots": ["./node_modules/@types", "./types"]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "typeRoots": [
+      "./types",
+      "./node_modules/@types"
+    ],
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "d3"
+    ],
+    "incremental": true
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "types/d3-custom.d.ts",
-    "types/speech-api.d.ts"
+    ".next/types/*",
+    "next-env.d.ts",
+    "utils/supabase/server.prod",
+    ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

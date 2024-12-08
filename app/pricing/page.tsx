@@ -1,3 +1,5 @@
+// /app/pricing/page.tsx
+
 import Pricing from '@/components/pricing';
 import {
   getProducts,

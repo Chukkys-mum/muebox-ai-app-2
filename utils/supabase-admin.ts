@@ -1,3 +1,5 @@
+// /utils/supabase-admin.ts
+
 import type { Database } from '@/types/types_db';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
@@ -6,6 +8,11 @@ import { stripe } from './stripe/config';
 
 type Product = Database['public']['Tables']['products']['Row'];
 type Price = Database['public']['Tables']['prices']['Row'];
+
+// Constants for trial and credits
+const TRIAL_PERIOD_DAYS = 14;
+const TRIAL_CREDITS = 2000;
+const SUBSCRIPTION_CREDITS = 20000;
 
 // Note: supabaseAdmin uses the SERVICE_ROLE_KEY which you must only use in a secure server-side context
 // as it has admin privileges and overwrites RLS policies!
@@ -29,19 +36,20 @@ const upsertProductRecord = async (product: Stripe.Product) => {
   console.log(`Product inserted/updated: ${product.id}`);
 };
 
-const upsertPriceRecord = async (price: Stripe.Price) => {
+const upsertPriceRecord = async (price: Stripe.Price, accountId: string) => {
   const priceData: Price = {
     id: price.id,
     product_id: typeof price.product === 'string' ? price.product : '',
     active: price.active,
     currency: price.currency,
-    description: price.nickname ?? null,
+    description: null, // Just set to null since we don't need Stripe's nickname/description
     type: price.type,
     unit_amount: price.unit_amount ?? null,
     interval: price.recurring?.interval ?? null,
     interval_count: price.recurring?.interval_count ?? null,
     trial_period_days: price.recurring?.trial_period_days ?? null,
-    metadata: price.metadata
+    metadata: price.metadata,
+    account_id: accountId
   };
 
   const { error } = await supabaseAdmin.from('prices').upsert([priceData]);
@@ -51,16 +59,19 @@ const upsertPriceRecord = async (price: Stripe.Price) => {
 
 const createOrRetrieveCustomer = async ({
   email,
-  uuid
+  uuid,
+  accountId
 }: {
   email: string;
   uuid: string;
+  accountId: string;
 }) => {
   const { data, error } = await supabaseAdmin
     .from('customers')
     .select('stripe_customer_id')
     .eq('id', uuid)
     .single();
+
   if (error || !data?.stripe_customer_id) {
     // No customer record found, let's create one.
     const customerData: {
@@ -72,11 +83,17 @@ const createOrRetrieveCustomer = async ({
       }
     };
     if (email) customerData.email = email;
+    
     const customer = await stripe.customers.create(customerData);
     // Now insert the customer ID into our Supabase mapping table.
     const { error: supabaseError } = await supabaseAdmin
       .from('customers')
-      .insert([{ id: uuid, stripe_customer_id: customer.id }]);
+      .insert([{ 
+        id: uuid, 
+        stripe_customer_id: customer.id,
+        account_id: accountId // Required field
+      }]);
+
     if (supabaseError) throw supabaseError;
     console.log(`New customer created and inserted for ${uuid}.`);
     return customer.id;
@@ -95,8 +112,10 @@ const copyBillingDetailsToCustomer = async (
   const customer = payment_method.customer as string;
   const { name, phone, address } = payment_method.billing_details;
   if (!name || !phone || !address) return;
+
   //@ts-ignore
   await stripe.customers.update(customer, { name, phone, address });
+  
   const { error } = await supabaseAdmin
     .from('users')
     .update({
@@ -104,6 +123,7 @@ const copyBillingDetailsToCustomer = async (
       payment_method: { ...payment_method[payment_method.type] }
     })
     .eq('id', uuid);
+    
   if (error) throw error;
 };
 
@@ -118,26 +138,28 @@ const manageSubscriptionStatusChange = async (
     error: noCustomerError
   } = await supabaseAdmin
     .from('customers')
-    .select('id')
+    .select('id, account_id')
     .eq('stripe_customer_id', customerId)
     .single();
+
   if (noCustomerError) throw noCustomerError;
 
-  const { id: uuid } = customerData!;
+  const { id: uuid, account_id } = customerData!;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
     expand: ['default_payment_method']
   });
+
   // Upsert the latest status of the subscription object.
   const subscriptionData: Database['public']['Tables']['subscriptions']['Insert'] = {
     id: subscription.id,
-    user_id: uuid,
+    account_id: account_id, // Using account_id instead of user_id
     metadata: subscription.metadata,
     status: subscription.status,
     price_id: subscription.items.data[0].price.id,
     //TODO check quantity on subscription
     // @ts-ignore
-    quantity: subscription.quantity,
+    quantity: subscription.items.data[0]?.quantity || null,
     cancel_at_period_end: subscription.cancel_at_period_end,
     cancel_at: subscription.cancel_at
       ? toDateTime(subscription.cancel_at).toISOString()
@@ -160,25 +182,29 @@ const manageSubscriptionStatusChange = async (
       : null,
     trial_end: subscription.trial_end
       ? toDateTime(subscription.trial_end).toISOString()
-      : null
+      : null,
+    credits: subscription.status === 'active' ? SUBSCRIPTION_CREDITS : null,
+    trial_credits: subscription.status === 'trialing' ? TRIAL_CREDITS : null
   };
 
   const { error } = await supabaseAdmin
     .from('subscriptions')
     .upsert([subscriptionData]);
+
   if (error) throw error;
   console.log(
-    `Inserted/updated subscription [${subscription.id}] for user [${uuid}]`
+    `Inserted/updated subscription [${subscription.id}] for account [${account_id}]`
   );
 
   // For a new subscription copy the billing details to the customer object.
   // NOTE: This is a costly operation and should happen at the very end.
-  if (createAction && subscription.default_payment_method && uuid)
+  if (createAction && subscription.default_payment_method && uuid) {
     //@ts-ignore
     await copyBillingDetailsToCustomer(
       uuid,
       subscription.default_payment_method as Stripe.PaymentMethod
     );
+  }
 };
 
 export {

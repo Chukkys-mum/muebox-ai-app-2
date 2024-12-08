@@ -1,3 +1,5 @@
+// components/file-management/FileUpload.tsx
+
 import React from 'react';
 
 // Define the props interface

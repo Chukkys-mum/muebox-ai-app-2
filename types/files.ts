@@ -6,6 +6,11 @@ export type FileStatus = 'active' | 'archived' | 'deleted' | 'trashed' | 'knowle
 export type FileCategory = 'image' | 'video' | 'audio' | 'document' | 'code' | 'archive' | 'other';
 export type FilePermission = 'read' | 'write' | 'delete' | 'share';
 export type FileOperation = 'upload' | 'download' | 'delete' | 'restore' | 'move' | 'copy';
+export type SortDirection = 'asc' | 'desc';
+export type FileAction = 
+  | 'share' | 'move' | 'star' | 'rename' | 'download' | 'report'
+  | 'pin' | 'unpin' | 'restore' | 'copy' | 'archive' | 'unarchive'
+  | 'view' | 'edit' | 'create' | 'upload' | 'delete';
 
 
 // File interface - // Represents a file or folder row in the table
@@ -138,82 +143,85 @@ export interface FileMetadata {
   checksum?: string;
 }
 
+// Update FileTableProps
 export interface FileTableProps {
-    data: FileRow[]; // Array of files or folders to be displayed
-    onDelete: (ids: string[]) => Promise<void>; // Function to handle file deletion
-    onRestore?: (ids: string[]) => Promise<void>; // Function to handle restoring files (optional for trash/archives)
-    isLoading: boolean; // Indicates whether the table is in a loading state
-    config: {
-      tableName: string; // Name of the table (for UI and search bar placeholders)
-      columns: Array<{ key: keyof FileRow; label: string }>; // Table column definitions
-      searchableColumns: Array<keyof FileRow>; // Columns that can be searched
-    };
-  }
+  data: FileRow[];
+  onDelete: (ids: string[]) => Promise<void>;
+  onAction: (action: FileAction, fileId: string) => void;
+  onBatchAction?: (operation: BatchOperation) => Promise<void>;
+  onSort?: (sortState: SortState) => void;
+  onFilter?: (filterState: FilterState) => void;
+  sortState?: SortState;
+  filterState?: FilterState;
+  onRestore?: (ids: string[]) => Promise<void>;
+  isLoading: boolean;
+  config: {
+    tableName: string;
+    columns: Array<{ key: keyof FileRow; label: string; sortable?: boolean }>;
+    searchableColumns: Array<keyof FileRow>;
+  };
+}
   
-  /**
-   * Represents a folder entity, with nested child files or folders.
-   */
-  export interface Folder extends FileRow {
-    children?: FileRow[]; // Child files or folders within this folder
-  }
-  
-  /**
-   * Additional metadata for folders in the knowledge base.
-   */
-  export interface KnowledgeBaseFolder extends Folder {
-    knowledgeBaseType: "public" | "private" | "safeguard"; // Specifies the type of knowledge base folder
-    safeguardRules?: {
-      // Rules specific to safeguarded knowledge bases
-      encryption: boolean; // Whether files are encrypted
-      expirationDate?: string; // Optional expiration date for file access
-    };
-  }
-  
-  /**
-   * Props for file upload modals.
-   */
-  export interface FileUploadModalProps {
-    onClose: () => void; // Function to handle closing the modal
-    onUploadSuccess: () => void; // Callback triggered when upload is successful
-    maxUploadSize: number; // Maximum file size allowed for uploads (in bytes)
-    allowedFileTypes?: string[]; // List of allowed file extensions
-  }
-  
-  export type FileAction = 
-  | 'share'
-  | 'move'
-  | 'star'
-  | 'rename'
-  | 'download'
-  | 'report'
-  | 'delete';
+/**
+ * Represents a folder entity, with nested child files or folders.
+ */
+export interface Folder extends FileRow {
+  children?: FileRow[]; // Child files or folders within this folder
+}
 
-  /**
-   * Props for file and folder actions dropdowns.
-   */
-  export interface FileActionProps {
-    onShare: (fileId: string) => void; // Function to handle sharing files or folders
-    onRename: (fileId: string) => void; // Function to handle renaming files or folders
-    onMove: (fileId: string, destinationFolderId: string) => void; // Function to handle moving files or folders
-    onDelete: (fileId: string) => void; // Function to handle deletion of files or folders
-    onDownload: (fileId: string) => void; // Function to handle file downloads
-    onPin?: (fileId: string) => void; // Function to handle pinning files or folders
-    onUnpin?: (fileId: string) => void; // Function to handle unpinning files or folders
-  }
-  
-  /**
-   * Represents a safeguard folder in the knowledge base.
-   */
-  export interface SafeguardFolder extends KnowledgeBaseFolder {
-    restrictedAccess: boolean; // Indicates if access is restricted to specific users
-    auditLogsEnabled: boolean; // Whether access logs are enabled
-    dataRetentionPolicy?: string; // Optional policy for data retention
-  }
+/**
+ * Additional metadata for folders in the knowledge base.
+ */
+export interface KnowledgeBaseFolder extends Folder {
+  knowledgeBaseType: "public" | "private" | "safeguard"; // Specifies the type of knowledge base folder
+  safeguardRules?: {
+    // Rules specific to safeguarded knowledge bases
+    encryption: boolean; // Whether files are encrypted
+    expirationDate?: string; // Optional expiration date for file access
+  };
+}
+
+/**
+ * Props for file upload modals.
+ */
+export interface FileUploadModalProps {
+  onClose: () => void; // Function to handle closing the modal
+  onUploadSuccess: () => void; // Callback triggered when upload is successful
+  maxUploadSize: number; // Maximum file size allowed for uploads (in bytes)
+  allowedFileTypes?: string[]; // List of allowed file extensions
+}
+
+
+
+
+/**
+ * Props for file and folder actions dropdowns.
+ */
+export interface FileActionProps {
+  onShare: (fileId: string) => void; // Function to handle sharing files or folders
+  onRename: (fileId: string) => void; // Function to handle renaming files or folders
+  onMove: (fileId: string, destinationFolderId: string) => void; // Function to handle moving files or folders
+  onDelete: (fileId: string) => void; // Function to handle deletion of files or folders
+  onDownload: (fileId: string) => void; // Function to handle file downloads
+  onPin?: (fileId: string) => void; // Function to handle pinning files or folders
+  onUnpin?: (fileId: string) => void; // Function to handle unpinning files or folders
+  onAction: (action: FileAction) => void;
+  disabled?: boolean;
+}
+
+/**
+ * Represents a safeguard folder in the knowledge base.
+ */
+export interface SafeguardFolder extends KnowledgeBaseFolder {
+  restrictedAccess: boolean; // Indicates if access is restricted to specific users
+  auditLogsEnabled: boolean; // Whether access logs are enabled
+  dataRetentionPolicy?: string; // Optional policy for data retention
+}
   
 
 /**
-   * Props for a trash or archive table component.
-   */
+ * Props for a trash or archive table component.
+ */
 
 
 // Trahs interface - Represents a trashed file or folder
@@ -273,3 +281,46 @@ export interface TrashcanTableProps {
   isLoading: boolean;
 }
 
+export interface SortState {
+  column: keyof FileRow;
+  direction: SortDirection;
+}
+
+// Filtering types
+export interface FilterState {
+  type?: 'file' | 'folder' | 'knowledge_base';
+  category?: FileCategory;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  searchTerm?: string;
+  tags?: string[];
+  starred?: boolean;
+  shared?: boolean;
+}
+
+// Batch operations
+export interface BatchOperation {
+  type: FileAction;
+  ids: string[];
+}
+
+// File preview
+export interface FilePreview {
+  id: string;
+  url: string;
+  type: string;
+  name: string;
+  size: number;
+  lastModified: string;
+  thumbnailUrl?: string;
+}
+
+// File preview modal props
+export interface FilePreviewModalProps {
+  file: FileRow;
+  isOpen: boolean;
+  onClose: () => void;
+  onAction?: (action: FileAction) => void;
+}
