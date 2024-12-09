@@ -1,6 +1,8 @@
-// middleware.ts
+// /middleware.ts
+
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
-import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next();
@@ -9,23 +11,14 @@ export async function middleware(request: NextRequest) {
   try {
     const {
       data: { session },
-      error
     } = await supabase.auth.getSession();
 
-    // Handle auth errors
-    if (error?.message.includes('refresh_token_already_used')) {
-      // Clear auth cookies
-      res.cookies.delete('sb-access-token');
-      res.cookies.delete('sb-refresh-token');
-      
-      // Only redirect if trying to access protected routes
-      const requestUrl = new URL(request.url);
-      if (requestUrl.pathname.startsWith('/dashboard/')) {
-        return NextResponse.redirect(new URL('/dashboard/signin', request.url));
-      }
+    // Always allow access to signin pages
+    if (request.nextUrl.pathname.startsWith('/dashboard/signin')) {
+      return res;
     }
 
-    // Check auth for protected routes
+    // Redirect to signin for other dashboard routes if not authenticated
     if (!session && request.nextUrl.pathname.startsWith('/dashboard/')) {
       return NextResponse.redirect(new URL('/dashboard/signin', request.url));
     }
@@ -33,21 +26,10 @@ export async function middleware(request: NextRequest) {
     return res;
   } catch (error) {
     console.error('Middleware error:', error);
-    // Clear cookies on critical errors
-    res.cookies.delete('sb-access-token');
-    res.cookies.delete('sb-refresh-token');
-    
-    if (request.nextUrl.pathname.startsWith('/dashboard/')) {
-      return NextResponse.redirect(new URL('/dashboard/signin', request.url));
-    }
     return res;
   }
 }
 
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'
-  ]
+  matcher: ['/dashboard/:path*', '/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

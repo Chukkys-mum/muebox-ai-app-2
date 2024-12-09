@@ -25,7 +25,12 @@ import {
 } from 'react-icons/hi2';
 import { IoMenuOutline } from 'react-icons/io5';
 
-export default function AdminNavbar(props) {
+interface AdminNavbarProps {
+  secondary?: boolean;
+  message?: string;
+}
+
+export default function AdminNavbar({ secondary, message }: AdminNavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -36,7 +41,6 @@ export default function AdminNavbar(props) {
       window.removeEventListener('scroll', changeNavbar);
     };
   });
-  const { secondary, message } = props;
 
   const changeNavbar = () => {
     if (window.scrollY > 1) {

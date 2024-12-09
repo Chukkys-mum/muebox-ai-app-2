@@ -1,6 +1,5 @@
-// /app/dashboard/signin/[id]/page.tsx
+// app/dashboard/signin/[id]/page.tsx
 
-import { ErrorBoundary } from '@/components/error-boundary';
 import DefaultAuth from '@/components/auth';
 import AuthUI from '@/components/auth/AuthUI';
 import { redirect } from 'next/navigation';
@@ -13,68 +12,63 @@ import {
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
 
+interface SignInPageProps {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ disable_button?: boolean }>;
+}
+
 export default async function SignIn({
   params,
   searchParams
-}: {
-  params: { id: string };
-  searchParams: { disable_button: boolean };
-}) {
+}: SignInPageProps) {
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
   const viewTypes = getViewTypes();
   const redirectMethod = getRedirectMethod();
   const supabase = createClient();
-
-  // Handle async param access with Promise.all
-  const [requestedViewParams, searchParamsValue] = await Promise.all([
-    Promise.resolve(params),
-    Promise.resolve(searchParams)
+  
+  // Use Promise.all to await all async operations
+  const [resolvedParams, resolvedSearchParams, cookieStore] = await Promise.all([
+    params,
+    searchParams,
+    cookies()
   ]);
 
-  const requestedView = String(requestedViewParams.id);
-  const isValidView = viewTypes.includes(requestedView);
+  const preferredSignInView = cookieStore.get('preferredSignInView')?.value || null;
+  const { data: { session } } = await supabase.auth.getSession();
 
-  // Handle view determination
-  let viewProp: string;
-  if (isValidView) {
-    viewProp = requestedView;
-  } else {
-    // Get preferred view from cookies
-    const cookieStore = await cookies();
-    const preferredSignInView = cookieStore.get('preferredSignInView')?.value || null;
-    viewProp = getDefaultSignInView(preferredSignInView);
-    
-    // Redirect to the correct view
-    if (viewProp !== requestedView) {
-      return redirect(`/dashboard/signin/${viewProp}`);
-    }
+  // First, validate the view type
+  const id = resolvedParams.id;
+  if (!id || !viewTypes.includes(id)) {
+    const defaultView = getDefaultSignInView(preferredSignInView);
+    return redirect(`/dashboard/signin/${defaultView}`);
   }
 
-  // Check auth status
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Handle auth-based redirects
-  if (user && viewProp !== 'update_password') {
+  // Handle auth redirects
+  if (session?.user && id !== 'update_password') {
     return redirect('/dashboard/main');
-  } 
+  }
   
-  if (!user && viewProp === 'update_password') {
+  if (!session?.user && id === 'update_password') {
     return redirect('/dashboard/signin');
   }
 
+  console.log('Rendering SignIn page', {
+    requestedView: id,
+    viewProp: id,
+    user: session?.user ? 'Authenticated' : 'Not authenticated'
+  });
+
   return (
-    <DefaultAuth viewProp={viewProp}>
-      <div>
-        <AuthUI
-          viewProp={viewProp}
-          user={user}
-          allowPassword={allowPassword}
-          allowEmail={allowEmail}
-          redirectMethod={redirectMethod}
-          disableButton={searchParamsValue.disable_button}
-          allowOauth={allowOauth}
-        />
-      </div>
+    <DefaultAuth viewProp={id}>
+      <AuthUI
+        viewProp={id}
+        user={session?.user || null} // Convert undefined to null
+        allowPassword={allowPassword}
+        allowEmail={allowEmail}
+        redirectMethod={redirectMethod}
+        disableButton={resolvedSearchParams.disable_button}
+        allowOauth={allowOauth}
+      />
     </DefaultAuth>
   );
 }

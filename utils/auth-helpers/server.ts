@@ -4,13 +4,33 @@
 
 import { getAuthTypes } from '@/utils/auth-helpers/settings';
 import { getErrorRedirect, getStatusRedirect, getURL } from '@/utils/helpers';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, handleTokenRefreshFailure } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+
+// Use createClient to get a Supabase client instance
+const supabase = createClient();
 
 function isValidEmail(email: string) {
   var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
   return regex.test(email);
+}
+
+async function handleAuthError(error: any) {
+  if (error.message.includes('refresh_token_already_used')) {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    return getErrorRedirect(
+      '/dashboard/signin',
+      'Session expired',
+      'Please sign in again.'
+    );
+  }
+  return getErrorRedirect(
+    '/dashboard/signin',
+    'Authentication error',
+    error.message
+  );
 }
 
 export async function redirectToPath(path: string) {
@@ -87,11 +107,7 @@ export async function signInWithEmail(formData: FormData) {
       );
     }
   } catch (error) {
-    redirectPath = getErrorRedirect(
-      '/dashboard/signin/email_signin',
-      'An error occurred.',
-      'Please try again.'
-    );
+    redirectPath = await handleAuthError(error);
   }
 
   return redirectPath;
@@ -180,11 +196,7 @@ export async function signInWithPassword(formData: FormData) {
       );
     }
   } catch (error) {
-    redirectPath = getErrorRedirect(
-      '/dashboard/signin/password_signin',
-      'An error occurred.',
-      'Please try again.'
-    );
+    redirectPath = await handleAuthError(error);
   }
 
   return redirectPath;
@@ -241,7 +253,7 @@ export async function signUp(formData: FormData) {
       const { error: accountError } = await supabase
       .from('accounts')
       .insert({
-        id: data.user.id,
+        id: data.user.id, // Add this line if 'id' is required and not auto-generated
         type: 'personal' as const,
         name: data.user.email!,
         status: 'active',
@@ -259,7 +271,7 @@ export async function signUp(formData: FormData) {
       const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
-        id: `trial_${data.user.id}`,
+        id: `trial_${data.user.id}`, // Add this line to provide an id
         account_id: data.user.id,
         status: 'trialing' as const,
         credits: 0,
@@ -276,12 +288,11 @@ export async function signUp(formData: FormData) {
       }
 
       // Explicitly set the session
-      if (!data.session) {
+      if (data.user && !data.session) {
         const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
           email,
           password
         });
-
         if (signInError) {
           console.error('Failed to sign in after signup:', signInError);
         } else {

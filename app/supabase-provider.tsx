@@ -1,14 +1,13 @@
-// app/supabase-provider.tsx
+// /app/supabase-provider.tsx
 
 'use client';
 
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
-import type { SupabaseClient } from '@supabase/auth-helpers-nextjs';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/types_db';
 import { useToast } from '@/components/ui/use-toast';
-import { AuthError } from '@supabase/supabase-js';
 
 type SupabaseContext = {
   supabase: SupabaseClient<Database>;
@@ -21,47 +20,48 @@ export default function SupabaseProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [supabase] = useState(() => createPagesBrowserClient());
+  const [supabase] = useState(() => 
+    createBrowserClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          flowType: 'pkce',
+          detectSessionInUrl: true,
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      }
+    )
+  );
+  
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    let mounted = true;
-
-    async function handleAuthChange(event: string) {
-      if (!mounted) return;
-      
-      if (event === 'SIGNED_OUT') {
-        router.push('/dashboard/signin');
-      } else if (event === 'SIGNED_IN') {
-        router.refresh();
-      }
-    }
-
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
         router.refresh();
-      } else {
-        await handleAuthChange(event);
       }
 
-      // Handle auth errors separately from session
-      const { error } = await supabase.auth.getSession();
-      if (error instanceof AuthError && error.message.includes('refresh_token_already_used')) {
-        await supabase.auth.signOut();
-        toast({
-          title: "Session expired",
-          description: "Please sign in again",
-          variant: "destructive"
-        });
-        router.push('/dashboard/signin');
+      // Handle auth errors
+      if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        const { error } = await supabase.auth.getSession();
+        if (error?.message.includes('refresh_token_already_used')) {
+          await supabase.auth.signOut();
+          toast({
+            title: "Session expired",
+            description: "Please sign in again",
+            variant: "destructive"
+          });
+          router.push('/dashboard/signin');
+        }
       }
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, [router, supabase, toast]);
