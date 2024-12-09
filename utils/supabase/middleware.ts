@@ -4,83 +4,92 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const createClient = (request: NextRequest) => {
-  // Create an unmodified response
+  console.log('Creating Supabase client');
   let response = NextResponse.next({
     request: {
-      headers: request.headers
-    }
+      headers: request.headers,
+    },
   });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+      },
       cookies: {
         get(name: string) {
+          console.log(`Getting cookie: ${name}`);
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the cookies for the request and response
+          console.log(`Setting cookie: ${name}`);
           request.cookies.set({
             name,
             value,
-            ...options
+            ...options,
           });
           response = NextResponse.next({
             request: {
-              headers: request.headers
-            }
+              headers: request.headers,
+            },
           });
           response.cookies.set({
             name,
             value,
-            ...options
+            ...options,
           });
         },
         remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the cookies for the request and response
+          console.log(`Removing cookie: ${name}`);
           request.cookies.set({
             name,
             value: '',
-            ...options
+            ...options,
           });
           response = NextResponse.next({
             request: {
-              headers: request.headers
-            }
+              headers: request.headers,
+            },
           });
           response.cookies.set({
             name,
             value: '',
-            ...options
+            ...options,
           });
-        }
-      }
+        },
+      },
     }
   );
 
   return { supabase, response };
 };
 
-export const updateSession = async (request: NextRequest) => {
+export async function updateSession(request: NextRequest) {
+  console.log('Updating session');
+  const { supabase, response } = createClient(request);
+
   try {
-    // This `try/catch` block is only here for the interactive tutorial.
-    // Feel free to remove once you have Supabase connected.
-    const { supabase, response } = createClient(request);
+    console.log('Getting session');
+    const { data: { session }, error } = await supabase.auth.getSession();
 
-    // This will refresh session if expired - required for Server Components
-    // https://supabase.com/docs/guides/auth/server-side/nextjs
-    await supabase.auth.getUser();
+    if (error) {
+      console.error('Session error:', error);
+      response.cookies.delete('sb-access-token');
+      response.cookies.delete('sb-refresh-token');
+      return NextResponse.redirect(new URL('/dashboard/signin', request.url));
+    }
 
+    console.log('Session retrieved successfully');
     return response;
-  } catch (e) {
-    // If you are here, a Supabase client could not be created!
-    // This is likely because you have not set up environment variables.
-    // Check out http://localhost:3000 for Next Steps.
+  } catch (error) {
+    console.error('Auth error:', error);
     return NextResponse.next({
       request: {
-        headers: request.headers
-      }
+        headers: request.headers,
+      },
     });
   }
-};
+}

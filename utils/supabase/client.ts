@@ -1,8 +1,8 @@
 // utils/supabase/client.ts
-// import { Database } from '@/types/supabase';
-import { Database } from '@/types/types_db';
+
 import { createBrowserClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
+import { Database } from '@/types/types_db';
 
 function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,16 +52,11 @@ function createClient() {
         },
         remove(name: string, options: CookieOptions) {
           if (typeof document === 'undefined') return;
-          this.set(name, '', { ...options, maxAge: -1 });
+          document.cookie = `${name}=; Max-Age=-1; Path=${options.path || '/'}`;
         }
       }
     }
   );
 }
 
-// Create a singleton instance
-const supabase = createClient();
-
-// Export the singleton instance and the createClient function
-export { supabase };
 export default createClient;

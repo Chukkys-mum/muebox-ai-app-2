@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { X, HelpCircle } from 'lucide-react';
 import { SourcesTab } from './tabs/SourcesTab';
 import { ChatScope } from '@/types/chat';
 
@@ -38,7 +38,7 @@ export function ChatScopePanel({
   availableKnowledgeBases,
   availableFolders
 }: ChatScopePanelProps) {
-
+  
   // Framing Tab Component
   function FramingTab() {
     return (
@@ -178,6 +178,7 @@ export function ChatScopePanel({
   }
 
   // Settings Tab Component
+  // Settings Tab Component
   function SettingsTab() {
     return (
       <div className="space-y-6">
@@ -191,14 +192,11 @@ export function ChatScopePanel({
               settings: {
                 ...chatScope.settings,
                 chatName: e.target.value,
-                botName: chatScope.settings?.botName || '',
-                textToSpeech: chatScope.settings?.textToSpeech || false,
-                speechToText: chatScope.settings?.speechToText || false,
-                llmId: chatScope.settings?.llmId || '',
               }
             })}
             placeholder="Enter chat name"
           />
+          <p className="text-sm text-gray-500">Chat name is automatically generated based on the conversation context.</p>
         </div>
   
         {/* Bot Name */}
@@ -206,15 +204,11 @@ export function ChatScopePanel({
           <Label htmlFor="botName">Bot Name</Label>
           <Input
             id="botName"
-            value={chatScope.settings?.botName || ''}
+            value={chatScope.settings?.botName || 'Zach'}
             onChange={(e) => onChatScopeChange({
               settings: {
                 ...chatScope.settings,
                 botName: e.target.value,
-                chatName: chatScope.settings?.chatName || '',
-                textToSpeech: chatScope.settings?.textToSpeech || false,
-                speechToText: chatScope.settings?.speechToText || false,
-                llmId: chatScope.settings?.llmId || '',
               }
             })}
             placeholder="Enter bot name"
@@ -231,10 +225,6 @@ export function ChatScopePanel({
               settings: {
                 ...chatScope.settings,
                 textToSpeech: checked,
-                chatName: chatScope.settings?.chatName || '',
-                botName: chatScope.settings?.botName || '',
-                speechToText: chatScope.settings?.speechToText || false,
-                llmId: chatScope.settings?.llmId || '',
               }
             })}
           />
@@ -250,112 +240,94 @@ export function ChatScopePanel({
               settings: {
                 ...chatScope.settings,
                 speechToText: checked,
-                chatName: chatScope.settings?.chatName || '',
-                botName: chatScope.settings?.botName || '',
-                textToSpeech: chatScope.settings?.textToSpeech || false,
-                llmId: chatScope.settings?.llmId || '',
               }
             })}
           />
         </div>
   
-        {/* LLM ID */}
+        {/* Choose LLMs */}
         <div className="space-y-2">
-          <Label htmlFor="llmId">LLM ID</Label>
-          <Input
-            id="llmId"
-            value={chatScope.settings?.llmId || ''}
-            onChange={(e) => onChatScopeChange({
+          <div className="flex items-center">
+            <Label htmlFor="llmChoice">Choose LLMs</Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2"
+              onClick={() => {
+                alert("Select and set your preferred Language Models for chat interactions.");
+              }}
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </div>
+          <Select
+            value={chatScope.settings?.llmId || 'gpt-3.5-turbo'}
+            onValueChange={(value) => onChatScopeChange({
               settings: {
                 ...chatScope.settings,
-                llmId: e.target.value,
-                chatName: chatScope.settings?.chatName || '',
-                botName: chatScope.settings?.botName || '',
-                textToSpeech: chatScope.settings?.textToSpeech || false,
-                speechToText: chatScope.settings?.speechToText || false,
+                llmId: value,
               }
             })}
-            placeholder="Enter LLM ID"
-          />
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select LLM" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+              <SelectItem value="gpt-4">GPT-4</SelectItem>
+              {/* Add more LLM options as needed */}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Panel */}
-      <div 
-        className={`fixed right-0 top-0 z-40 h-full w-[400px] transform bg-[#F8F8F8] shadow-lg transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="flex h-full flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
-            <h2 className="text-xl font-bold">Chat Scope</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+    <div 
+      className={`fixed right-0 top-0 z-40 h-full w-[400px] transform bg-[#F8F8F8] shadow-lg transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}
+    >
+      <div className="flex h-full flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+          <h2 className="text-xl font-bold">Chat Scope</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <Tabs defaultValue="framing" className="h-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="framing">Framing</TabsTrigger>
-                <TabsTrigger value="sources">Sources</TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
-              </TabsList>
-              <TabsContent value="framing" className="mt-4">
-                <FramingTab />
-              </TabsContent>
-              <TabsContent value="sources" className="mt-4">
-                <SourcesTab
-                  sources={chatScope.sources}
-                  onSourcesChange={(newSources) => onChatScopeChange({
-                    sources: {
-                      urls: newSources.urls,
-                      files: newSources.files,
-                      knowledgeBases: newSources.knowledgeBases,
-                      emails: newSources.emails,
-                      folders: newSources.folders,
-                    }
-                  })}
-                  availableKnowledgeBases={availableKnowledgeBases}
-                  availableFolders={availableFolders}
-                />
-              </TabsContent>
-              <TabsContent value="settings" className="mt-4">
-                <SettingsTab />
-              </TabsContent>
-            </Tabs>
-          </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <Tabs defaultValue="framing" className="h-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="framing">Framing</TabsTrigger>
+              <TabsTrigger value="sources">Sources</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+            <TabsContent value="framing" className="mt-4">
+              <FramingTab />
+            </TabsContent>
+            <TabsContent value="sources" className="mt-4">
+              <SourcesTab
+                sources={chatScope.sources}
+                onSourcesChange={(newSources) => onChatScopeChange({ sources: newSources })}
+                availableKnowledgeBases={availableKnowledgeBases}
+                availableFolders={availableFolders}
+              />
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+              <SettingsTab />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-      
-      {/* Toggle Button */}
-      <div 
-        className={`fixed top-1/3 -translate-y-1/2 transform transition-all duration-300 ${
-          isOpen ? 'right-[400px]' : 'right-0'
-        } z-50`}
-      >
-        <Button
-          onClick={onClose}
-          className="h-32 w-8 rounded-r-none rounded-l-md bg-[#F8F8F8] px-0 text-black hover:bg-[#F0F0F0]"
-          style={{ 
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed'
-          }}
-        >
-          Chat Context
-        </Button>
-      </div>
-    </>
+    </div>
   );
 }

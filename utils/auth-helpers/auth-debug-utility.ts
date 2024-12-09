@@ -1,7 +1,6 @@
 // /utils/auth-helpers/auth-debug-utility.ts
 
 import { createClient as createServerClient } from '@/utils/supabase/server'
-import { createClient as createBrowserClient } from '@/utils/supabase/client'
 import { NextResponse } from 'next/server'
 import { Database } from '@/types/types_db'
 
@@ -57,30 +56,26 @@ export class AuthDebugger {
 
   async testSignUp(email: string, password: string) {
     try {
-      // Use browser client for signup
-      const browserSupabase = createBrowserClient()
-      
-      const response = await browserSupabase.auth.signUp({
+      const response = await this.supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
         }
-      })
-
+      });
+  
       return {
         success: !response.error,
         error: response.error?.message,
         data: response.data,
         timestamp: new Date().toISOString()
-      }
-
+      };
     } catch (e) {
       return {
         success: false,
         error: e instanceof Error ? e.message : 'Unknown error occurred',
         timestamp: new Date().toISOString()
-      }
+      };
     }
   }
 
