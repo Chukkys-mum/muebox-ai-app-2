@@ -234,72 +234,66 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex h-full w-full">
-    {/* Chat Sidebar */}
-    <div className="w-80 border-r border-gray-200 dark:border-gray-700">
-      <ChatSidebar
-        chats={chatList}
-        chatScopes={Object.fromEntries(
-          chatScopes.map(scope => [
-            scope.value,
-            {
-              id: scope.value,
-              name: scope.label,
-              status: 'active',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            } as ChatScope
-          ])
-        )}
-        messages={Object.fromEntries(
-          chatList.map(chat => [
-            chat.id,
-            messages.map(msg => ({
-              id: msg.id,
-              chat_id: chat.id,
-              sender_id: msg.role === 'user' ? 'user' : 'assistant',
-              content: msg.content,
-              type: 'text',
-              is_read: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            } as ChatMessage))
-          ])
-        )}
-        onSelectChat={(chatId) => {
-          // Handle chat selection
-          console.log('Selected chat:', chatId);
-        }}
-        onNewChat={() => {
-          // Create a new chat
-          const newChat: ChatType = {
-            id: uuidv4(),
-            chat_type: 'ai',
-            created_by_user_id: user?.id || '',
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          setChatList(prev => [...prev, newChat]);
-        }}
-      />
-    </div>
+    <div className="flex h-screen w-full overflow-hidden">
+      {/* Chat Sidebar - Fixed width, full height */}
+      <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <ChatSidebar
+          chats={chatList}
+          chatScopes={Object.fromEntries(
+            chatScopes.map(scope => [
+              scope.value,
+              {
+                id: scope.value,
+                name: scope.label,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              } as ChatScope
+            ])
+          )}
+          messages={Object.fromEntries(
+            chatList.map(chat => [
+              chat.id,
+              messages.map(msg => ({
+                id: msg.id,
+                chat_id: chat.id,
+                sender_id: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+                type: 'text',
+                is_read: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              } as ChatMessage))
+            ])
+          )}
+          onSelectChat={(chatId) => {
+            console.log('Selected chat:', chatId);
+          }}
+          onNewChat={() => {
+            setChatList(prev => [...prev, newChat]);
+          }}
+        />
+      </div>
   
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Messages container */}
+      {/* Main Chat Area - Flex grow, with fixed header and footer */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Optional Chat Header */}
+        <div className="flex-shrink-0 h-16 border-b border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="text-lg font-semibold">Current Chat</h2>
+        </div>
+  
+        {/* Messages Container - Scrollable */}
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-2xl mx-auto space-y-4">
-            {messages.map((message, index) => (
+          <div className="max-w-2xl mx-auto space-y-4 flex flex-col-reverse">
+            {/* Reverse the messages array to show newest at bottom */}
+            {messages.slice().reverse().map((message, index) => (
               <div
-                key={index}
-                className={`flex ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-end">
+                <div className="flex items-end gap-2 max-w-[80%]">
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 ${
                       message.role === 'user'
                         ? 'bg-blue-500'
                         : 'bg-zinc-300 dark:bg-zinc-700'
@@ -312,21 +306,23 @@ export default function Chat() {
                     )}
                   </div>
                   <div
-                    className={`ml-2 rounded-lg px-3 py-2 ${
+                    className={`rounded-lg px-4 py-2 break-words ${
                       message.role === 'user'
                         ? 'bg-blue-500 text-white'
                         : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                   {message.role === 'assistant' && (
                     <Button
                       onClick={() => speakMessage(message.content)}
-                      className="ml-2 p-2"
+                      size="icon"
+                      variant="ghost"
+                      className="flex-shrink-0"
                       disabled={isSpeaking}
                     >
-                      <HiSpeakerWave className="h-5 w-5" />
+                      <HiSpeakerWave className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -335,9 +331,9 @@ export default function Chat() {
           </div>
         </div>
   
-        {/* Chat Input */}
-        <div className="border-t bg-white dark:bg-zinc-800">
-          <div className="max-w-2xl mx-auto p-4">
+        {/* Input Area - Fixed at bottom */}
+        <div className="flex-shrink-0 border-t bg-white dark:bg-zinc-800 p-4">
+          <div className="max-w-2xl mx-auto">
             <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
               <div className="relative w-full">
                 <Input
@@ -357,27 +353,26 @@ export default function Chat() {
                   </Button>
                 </div>
               </div>
-              <div className="flex space-x-1">
-                <Button type="button" size="icon" variant="ghost">
-                  <HiPaperClip className="h-4 w-4" />
-                </Button>
-                <Button type="button" size="icon" variant="ghost">
-                  <HiFaceSmile className="h-4 w-4" />
-                </Button>
-                <Button type="button" size="icon" variant="ghost">
-                  <HiCodeBracket className="h-4 w-4" />
-                </Button>
-                <Button type="button" size="icon" variant="ghost">
-                  <HiMiniPencilSquare className="h-4 w-4" />
-                </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-1">
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiPaperClip className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiFaceSmile className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiCodeBracket className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiMiniPencilSquare className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  AI may produce inaccurate information
+                </p>
               </div>
             </form>
-          </div>
-          <div className="p-2">
-            <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
-              AI may produce inaccurate information about people, places, or facts.
-              Consider checking important information.
-            </p>
           </div>
         </div>
       </div>
