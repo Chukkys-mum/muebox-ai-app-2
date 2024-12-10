@@ -15,7 +15,6 @@ import { User } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { ChatScopePanel } from '@/components/chat-scope/ChatScopePanel';
-import { ChatScope } from '@/types'; 
 import { KnowledgeBaseFile } from '@/services/files/KnowledgeBaseService';
 import { FileRow } from '@/types';
 import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave, HiPaperAirplane, HiPaperClip, HiFaceSmile, HiCodeBracket } from 'react-icons/hi2';
@@ -27,9 +26,27 @@ import {
   ProductsContext,
   SubscriptionContext
 } from '@/context/layout';
+import { ChatSidebar } from './ChatSidebar';
+import { 
+  Chat as ChatType,  // Rename to avoid conflict with the component
+  ChatMessage, 
+  ChatScope,
+  ChatUser 
+} from '@/types/chat';
 
 type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
 type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
+
+const transformMessage = (message: { id: string; role: string; content: string }) => ({
+  id: message.id,
+  chat_id: 'current', // You'll need to track the current chat ID
+  sender_id: message.role === 'user' ? 'user' : 'assistant',
+  content: message.content,
+  type: 'text' as const,
+  is_read: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+});
 
 const chatScopes = [
   { value: 'general', label: 'General Chat' },
@@ -59,6 +76,19 @@ export default function Chat() {
   const [isChatScopePanelOpen, setIsChatScopePanelOpen] = useState(false);
   const [availableKnowledgeBases, setAvailableKnowledgeBases] = useState<KnowledgeBaseFile[]>([]);
   const [availableFolders, setAvailableFolders] = useState<FileRow[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>('');
+  const [chatList, setChatList] = useState<ChatType[]>([]);
+  const [chatMessagesMap, setChatMessagesMap] = useState<Record<string, ChatMessage[]>>({});
+
+  const newChat: ChatType = {
+    id: uuidv4(),
+    chat_type: 'ai',
+    created_by_user_id: user?.id || '',
+    status: 'active',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
   const [chatScopeState, setChatScopeState] = useState<ChatScope>({
     id: '',
     name: '',
@@ -204,99 +234,152 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
-      {/* Wrapper for messages and input */}
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
-        {/* Messages */}
+    <div className="flex h-full w-full">
+    {/* Chat Sidebar */}
+    <div className="w-80 border-r border-gray-200 dark:border-gray-700">
+      <ChatSidebar
+        chats={chatList}
+        chatScopes={Object.fromEntries(
+          chatScopes.map(scope => [
+            scope.value,
+            {
+              id: scope.value,
+              name: scope.label,
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } as ChatScope
+          ])
+        )}
+        messages={Object.fromEntries(
+          chatList.map(chat => [
+            chat.id,
+            messages.map(msg => ({
+              id: msg.id,
+              chat_id: chat.id,
+              sender_id: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              type: 'text',
+              is_read: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } as ChatMessage))
+          ])
+        )}
+        onSelectChat={(chatId) => {
+          // Handle chat selection
+          console.log('Selected chat:', chatId);
+        }}
+        onNewChat={() => {
+          // Create a new chat
+          const newChat: ChatType = {
+            id: uuidv4(),
+            chat_type: 'ai',
+            created_by_user_id: user?.id || '',
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setChatList(prev => [...prev, newChat]);
+        }}
+      />
+    </div>
+  
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              } mb-4`}
-            >
-              <div className="flex items-end">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    message.role === 'user'
-                      ? 'bg-blue-500'
-                      : 'bg-zinc-300 dark:bg-zinc-700'
-                  }`}
-                >
-                  {message.role === 'user' ? (
-                    <HiUser className="h-5 w-5 text-white" />
-                  ) : (
-                    <HiSparkles className="h-5 w-5 text-zinc-800 dark:text-white" />
+          <div className="max-w-2xl mx-auto space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div className="flex items-end">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                      message.role === 'user'
+                        ? 'bg-blue-500'
+                        : 'bg-zinc-300 dark:bg-zinc-700'
+                    }`}
+                  >
+                    {message.role === 'user' ? (
+                      <HiUser className="h-5 w-5 text-white" />
+                    ) : (
+                      <HiSparkles className="h-5 w-5 text-zinc-800 dark:text-white" />
+                    )}
+                  </div>
+                  <div
+                    className={`ml-2 rounded-lg px-3 py-2 ${
+                      message.role === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                  {message.role === 'assistant' && (
+                    <Button
+                      onClick={() => speakMessage(message.content)}
+                      className="ml-2 p-2"
+                      disabled={isSpeaking}
+                    >
+                      <HiSpeakerWave className="h-5 w-5" />
+                    </Button>
                   )}
                 </div>
-                <div
-                  className={`ml-2 rounded-lg px-3 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-white'
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                </div>
-                {message.role === 'assistant' && (
-                  <Button
-                    onClick={() => speakMessage(message.content)}
-                    className="ml-2 p-2"
-                    disabled={isSpeaking}
-                  >
-                    <HiSpeakerWave className="h-5 w-5" />
-                  </Button>
-                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
   
         {/* Chat Input */}
-        <div className="border-t p-4">
-          <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
-            <div className="relative w-full">
-              <Input
-                ref={inputRef}
-                className="pr-20 w-full"
-                placeholder="Type your message here..."
-                value={input}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
-                <Button type="button" onClick={startListening} disabled={isListening} size="icon" variant="ghost">
-                  <HiMicrophone className="h-4 w-4" />
+        <div className="border-t bg-white dark:bg-zinc-800">
+          <div className="max-w-2xl mx-auto p-4">
+            <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
+              <div className="relative w-full">
+                <Input
+                  ref={inputRef}
+                  className="pr-20 w-full"
+                  placeholder="Type your message here..."
+                  value={input}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
+                  <Button type="button" onClick={startListening} disabled={isListening} size="icon" variant="ghost">
+                    <HiMicrophone className="h-4 w-4" />
+                  </Button>
+                  <Button type="submit" disabled={isLoading} size="icon" variant="ghost">
+                    <HiPaperAirplane className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex space-x-1">
+                <Button type="button" size="icon" variant="ghost">
+                  <HiPaperClip className="h-4 w-4" />
                 </Button>
-                <Button type="submit" disabled={isLoading} size="icon" variant="ghost">
-                  <HiPaperAirplane className="h-4 w-4" />
+                <Button type="button" size="icon" variant="ghost">
+                  <HiFaceSmile className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost">
+                  <HiCodeBracket className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost">
+                  <HiMiniPencilSquare className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-            <div className="flex space-x-1">
-              <Button type="button" size="icon" variant="ghost">
-                <HiPaperClip className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost">
-                <HiFaceSmile className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost">
-                <HiCodeBracket className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost">
-                <HiMiniPencilSquare className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
+            </form>
+          </div>
+          <div className="p-2">
+            <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
+              AI may produce inaccurate information about people, places, or facts.
+              Consider checking important information.
+            </p>
+          </div>
         </div>
-      </div>
-  
-      <div className="p-4">
-        <p className="text-center text-xs text-zinc-500 dark:text-white">
-          AI may produce inaccurate information about people, places, or facts.
-          Consider checking important information.
-        </p>
       </div>
   
       {/* ChatScopePanel */}

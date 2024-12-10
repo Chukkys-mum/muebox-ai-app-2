@@ -10,16 +10,15 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { cn } from "@/utils/cn";
-import { Chat, ChatParticipant, ChatMessage, ChatUser } from "@/types/chat";
+import { Chat, ChatParticipant, ChatMessage, ChatUser, ChatScope } from "@/types/chat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { usePathname, useRouter } from "next/navigation";
 
 interface ChatListItemProps {
   chat: Chat;
-  participants: ChatParticipant[];
+  chatScope?: ChatScope;
   lastMessage?: ChatMessage;
-  user: ChatUser;
   unreadCount: number;
   isActive: boolean;
   onClick: () => void;
@@ -27,9 +26,8 @@ interface ChatListItemProps {
 
 const ChatListItem = ({
   chat,
-  participants,
+  chatScope,
   lastMessage,
-  user,
   unreadCount,
   isActive,
   onClick
@@ -44,14 +42,16 @@ const ChatListItem = ({
     onClick={onClick}
   >
     <Avatar>
-      <AvatarImage src={user.avatar || undefined} />
+      <AvatarImage src={undefined} />
       <AvatarFallback>
         <User className="h-4 w-4" />
       </AvatarFallback>
     </Avatar>
     <div className="flex-1 text-left">
       <div className="flex justify-between items-center">
-        <span className="font-medium">{user.name}</span>
+        <span className="font-medium">
+          {chatScope?.name || `Chat ${chat.id.slice(0, 8)}`}
+        </span>
         {lastMessage && (
           <span className="text-xs text-muted-foreground">
             {new Date(lastMessage.created_at).toLocaleTimeString()}
@@ -75,17 +75,19 @@ const ChatListItem = ({
 interface ChatSidebarProps {
   className?: string;
   chats: Chat[];
-  participants: Record<string, ChatParticipant[]>;
+  chatScopes: Record<string, ChatScope>;
   messages: Record<string, ChatMessage[]>;
-  users: Record<string, ChatUser>;
+  onSelectChat: (chatId: string) => void;
+  onNewChat: () => void;
 }
 
 export function ChatSidebar({ 
   className, 
   chats,
-  participants,
+  chatScopes,
   messages,
-  users 
+  onSelectChat,
+  onNewChat
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
@@ -101,53 +103,44 @@ export function ChatSidebar({
     return chatMessages.filter(msg => !msg.is_read).length;
   };
 
-  const getChatUser = (chatId: string): ChatUser | undefined => {
-    const chatParticipants = participants[chatId] || [];
-    const otherParticipant = chatParticipants.find(p => p.user_id !== 'current-user-id');
-    return otherParticipant ? users[otherParticipant.user_id] : undefined;
-  };
-
   const filteredChats = chats.filter(chat => {
-    const user = getChatUser(chat.id);
-    return user?.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const chatScope = chatScopes[chat.chat_scope_id || ''];
+    return chatScope?.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
     <Card className={cn("flex flex-col h-full", className)}>
       <CardHeader className="p-4">
-        <div className="flex items-center space-x-4">
-        <div className="relative flex-1">
+        <div className="space-y-4">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
             />
-        </div>
-          <Button variant="outline" size="icon">
-            <Menu className="h-4 w-4" />
+          </div>
+          <Button 
+            className="w-full"
+            onClick={onNewChat}
+          >
+            New Chat
           </Button>
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-0">
-        {filteredChats.map((chat) => {
-          const user = getChatUser(chat.id);
-          if (!user) return null;
-
-          return (
-            <ChatListItem
-              key={chat.id}
-              chat={chat}
-              participants={participants[chat.id] || []}
-              lastMessage={getLastMessage(chat.id)}
-              user={user}
-              unreadCount={getUnreadCount(chat.id)}
-              isActive={pathname.includes(chat.id)}
-              onClick={() => router.push(`/chat/${chat.id}`)}
-            />
-          );
-        })}
+        {filteredChats.map((chat) => (
+          <ChatListItem
+            key={chat.id}
+            chat={chat}
+            chatScope={chatScopes[chat.chat_scope_id || '']}
+            lastMessage={getLastMessage(chat.id)}
+            unreadCount={getUnreadCount(chat.id)}
+            isActive={pathname.includes(chat.id)}
+            onClick={() => onSelectChat(chat.id)}
+          />
+        ))}
       </CardContent>
     </Card>
   );
