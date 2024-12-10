@@ -300,7 +300,7 @@ export default function Chat() {
       </div>
   
       {/* ChatScopePanel */}
-      <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-50">
+      <div className="fixed right-0 top-[100px] z-50">
         <Button
           onClick={() => setIsChatScopePanelOpen(!isChatScopePanelOpen)}
           className={`h-32 w-8 rounded-l-md bg-[#F8F8F8] text-black hover:bg-[#F0F0F0] transition-all duration-300 ${
