@@ -259,33 +259,39 @@ export default function Chat(props: Props) {
 
         {/* Chat Input */}
         <div className="border-t p-4">
-          <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-            <Input
-              ref={inputRef}
-              className="flex-1"
-              placeholder="Type your message here..."
-              value={input}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-            />
-            <Button type="button" onClick={startListening} disabled={isListening}>
-              <HiMicrophone className="h-5 w-5" />
-            </Button>
-            <Button type="button">
-              <HiPaperClip className="h-5 w-5" />
-            </Button>
-            <Button type="button">
-              <HiFaceSmile className="h-5 w-5" />
-            </Button>
-            <Button type="button">
-              <HiCodeBracket className="h-5 w-5" />
-            </Button>
-            <Button type="button">
-              <HiMiniPencilSquare className="h-5 w-5" />
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              <HiPaperAirplane className="h-5 w-5" />
-            </Button>
+          <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                className="pr-20" // Add padding to the right to make room for buttons
+                placeholder="Type your message here..."
+                value={input}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
+                <Button type="button" onClick={startListening} disabled={isListening} size="icon" variant="ghost">
+                  <HiMicrophone className="h-4 w-4" />
+                </Button>
+                <Button type="submit" disabled={isLoading} size="icon" variant="ghost">
+                  <HiPaperAirplane className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex space-x-1">
+              <Button type="button" size="icon" variant="ghost">
+                <HiPaperClip className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost">
+                <HiFaceSmile className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost">
+                <HiCodeBracket className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost">
+                <HiMiniPencilSquare className="h-4 w-4" />
+              </Button>
+            </div>
           </form>
         </div>
 
