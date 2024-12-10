@@ -212,7 +212,7 @@ export default function Chat(props: Props) {
         users={{}}
       />
       <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto"> 
           {messages.map((message, index) => (
             <div
               key={index}
