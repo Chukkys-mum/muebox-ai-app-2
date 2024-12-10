@@ -1,4 +1,6 @@
-// /components/layout/index.tsx
+// components/layout/index.tsx
+
+"use client";
 
 import Footer from '@/components/footer/FooterAdmin';
 import Navbar from '@/components/navbar/NavbarAdmin';

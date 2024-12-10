@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useChat } from 'ai/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,22 +18,18 @@ import { ChatScopePanel } from '@/components/chat-scope/ChatScopePanel';
 import { ChatScope } from '@/types'; 
 import { KnowledgeBaseFile } from '@/services/files/KnowledgeBaseService';
 import { FileRow } from '@/types';
-import DashboardLayout from '@/components/layout';
-import Sidebar from '@/components/sidebar/Sidebar';
-import { ChatSidebar } from '@/components/dashboard/ai-chat/ChatSidebar';
 import { HiMiniPencilSquare, HiSparkles, HiUser, HiMicrophone, HiSpeakerWave, HiPaperAirplane, HiPaperClip, HiFaceSmile, HiCodeBracket } from 'react-icons/hi2';
 import { generateChatName, requestSpeechPermissions } from '@/utils/chatUtils';
 import { v4 as uuidv4 } from 'uuid';   
+import {
+  UserContext,
+  UserDetailsContext,
+  ProductsContext,
+  SubscriptionContext
+} from '@/context/layout';
 
 type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
 type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
-
-interface Props {
-  user: User | null | undefined;
-  products: ProductWithPrices[];
-  subscription: SubscriptionWithProduct | null;
-  userDetails: { [x: string]: any } | null;
-}
 
 const chatScopes = [
   { value: 'general', label: 'General Chat' },
@@ -49,7 +45,12 @@ const personalities = [
   { value: 'humorous', label: 'Humorous' },
 ];
 
-export default function Chat(props: Props) {
+export default function Chat() {
+  const user = useContext(UserContext);
+  const userDetails = useContext(UserDetailsContext);
+  const products = useContext(ProductsContext);
+  const subscription = useContext(SubscriptionContext);
+
   const { theme } = useTheme();
   const [model, setModel] = useState<OpenAIModel>('gpt-3.5-turbo');
   const [isListening, setIsListening] = useState(false);
@@ -105,7 +106,7 @@ export default function Chat(props: Props) {
     }));
 
     const botIntroduction = `
-      Hello! I'm ${chatScopeState.settings?.botName || 'Zach'}, your AI assistant. You can change my name anytime, either here in the chat or in the Chat Scope settings.
+      Hello! I'm ${chatScopeState.settings?.botName || 'Sofie'}, your AI assistant. You can change my name anytime, either here in the chat or in the Chat Scope settings.
 
       I'm here to help with anything you need—whether it's answering questions, brainstorming ideas, or tackling tasks.
 
@@ -203,16 +204,11 @@ export default function Chat(props: Props) {
   };
 
   return (
-    <div className="flex h-screen">
-      <ChatSidebar
-        className="w-64 border-r"
-        chats={[]} // Add your chats data here
-        participants={{}}
-        messages={{}}
-        users={{}}
-      />
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto"> 
+    <div className="flex flex-col h-full w-full">
+      {/* Wrapper for messages and input */}
+      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -256,14 +252,14 @@ export default function Chat(props: Props) {
             </div>
           ))}
         </div>
-
+  
         {/* Chat Input */}
         <div className="border-t p-4">
           <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
-            <div className="relative">
+            <div className="relative w-full">
               <Input
                 ref={inputRef}
-                className="pr-20" // Add padding to the right to make room for buttons
+                className="pr-20 w-full"
                 placeholder="Type your message here..."
                 value={input}
                 onChange={handleInputChange}
@@ -294,15 +290,15 @@ export default function Chat(props: Props) {
             </div>
           </form>
         </div>
-
-        <div className="p-4">
-          <p className="text-center text-xs text-zinc-500 dark:text-white">
-            AI may produce inaccurate information about people, places, or facts.
-            Consider checking important information.
-          </p>
-        </div>
       </div>
-
+  
+      <div className="p-4">
+        <p className="text-center text-xs text-zinc-500 dark:text-white">
+          AI may produce inaccurate information about people, places, or facts.
+          Consider checking important information.
+        </p>
+      </div>
+  
       {/* ChatScopePanel */}
       <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-50">
         <Button

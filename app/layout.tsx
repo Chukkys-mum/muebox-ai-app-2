@@ -17,8 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <title>
-          Horizon UI Boilerplate - Launch your startup project 10X in a few
-          moments - The best NextJS Boilerplate (This is an example)
+          Muebox AI - Personalising Ai for people and organisations
         </title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* <!--  Social tags   --> */}
