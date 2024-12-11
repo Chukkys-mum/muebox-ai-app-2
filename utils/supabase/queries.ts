@@ -1,6 +1,5 @@
 // utils/supabase/queries.ts
 
-// utils/supabase/queries.ts
 import { SupabaseClient } from '@supabase/supabase-js';
 import { User } from '@supabase/supabase-js';
 import { Database } from '@/types/types_db';

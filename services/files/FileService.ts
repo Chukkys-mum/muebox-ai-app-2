@@ -27,7 +27,8 @@ export class FileService extends BaseService {
       const { data, error } = await this.supabase
         .from('files')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('user_id', userId); // Add this filter
 
       if (error) throw error;
       return (data?.map(file => this.transformDatabaseFile(file)) || []);
@@ -35,7 +36,7 @@ export class FileService extends BaseService {
       logger.error('Failed to fetch files', { error: err });
       return [];
     }
-  }
+}
 
   async getAvailableFolders(userId: string): Promise<FileRow[]> {
     try {
@@ -54,21 +55,22 @@ export class FileService extends BaseService {
     }
   }
 
-  async fetchFolders(): Promise<FileRow[]> {
+  async fetchFolders(userId: string): Promise<FileRow[]> {
     try {
       const { data, error } = await this.supabase
         .from('files')
         .select('*')
         .eq('type', 'folder')
-        .eq('status', 'active');
-  
+        .eq('status', 'active')
+        .eq('user_id', userId); // Add this filter
+
       if (error) throw error;
       return data?.map(folder => this.transformDatabaseFile(folder)) || [];
     } catch (err) {
       logger.error('Failed to fetch folders', { error: err });
       return [];
     }
-  }
+}
 
   async getFileSettings(): Promise<FileSettings | null> {
     try {

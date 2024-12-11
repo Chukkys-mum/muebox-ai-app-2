@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Lock, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { useSupabase } from '@/app/supabase-provider';
+import { supabase } from '@/utils/supabase/client';
 
 interface TeamSwitcherProps {
   onClose: () => void;
@@ -18,12 +19,12 @@ interface Team {
 const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
+  const { supabase } = useSupabase();
 
   useEffect(() => {
     const fetchTeams = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user?.id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
         const { data: teamsData } = await supabase
           .from('teams')
           .select(`
@@ -33,10 +34,10 @@ const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
               id
             )
           `)
-          .eq('user_id', userData.user.id);
+          .eq('user_id', user.id);
 
         if (teamsData) {
-        const formattedTeams: Team[] = teamsData.map((team: any) => ({
+          const formattedTeams: Team[] = teamsData.map((team: any) => ({
             id: team.team_id,
             name: team.users?.[0]?.full_name || 'Name',
             members: team.users?.length || 0
@@ -47,7 +48,7 @@ const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
     };
 
     fetchTeams();
-  }, []);
+  }, [supabase]);
 
   const handleTeamSelect = (teamId: string) => {
     router.push('/dashboard/main');

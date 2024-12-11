@@ -8,23 +8,40 @@ import {
   getProducts,
   getSubscription
 } from '@/utils/supabase/queries';
+import {
+  adaptProductWithPrices,
+  adaptSubscriptionWithProduct
+} from '@/types/adapters';
+import {
+  UserProvider,
+  UserDetailsProvider,
+  ProductsProvider,
+  SubscriptionProvider
+} from '@/context/layout';
 
-export default async function AiChat() {
+// Server Component
+export default async function AiChatPage() {
   const supabase = createClient();
-
-  const [user, userDetails, products, subscription] = await Promise.all([
+  const [user, userDetails, dbProducts, dbSubscription] = await Promise.all([
     getUser(supabase),
     getUserDetails(supabase),
     getProducts(supabase),
     getSubscription(supabase)
   ]);
 
+  // Adapt the data to match the expected types
+  const products = dbProducts.map(adaptProductWithPrices);
+  const subscription = dbSubscription ? adaptSubscriptionWithProduct(dbSubscription) : null;
+
   return (
-    <Chat
-      user={user}
-      userDetails={userDetails}
-      products={products}
-      subscription={subscription}
-    />
+    <UserProvider value={user}>
+      <UserDetailsProvider value={userDetails}>
+        <ProductsProvider value={products}>
+          <SubscriptionProvider value={subscription}>
+            <Chat />
+          </SubscriptionProvider>
+        </ProductsProvider>
+      </UserDetailsProvider>
+    </UserProvider>
   );
 }

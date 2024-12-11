@@ -79,6 +79,7 @@ export default function Chat() {
   const [currentChatId, setCurrentChatId] = useState<string>('');
   const [chatList, setChatList] = useState<ChatType[]>([]);
   const [chatMessagesMap, setChatMessagesMap] = useState<Record<string, ChatMessage[]>>({});
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const newChat: ChatType = {
     id: uuidv4(),

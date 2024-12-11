@@ -3,6 +3,8 @@
 import { Database } from '@/types/types_db';
 import { WithTimestamps, WithStatus, JsonB } from './common';
 import { OpenAIModel } from './essay';
+import { User } from './user';
+
 
 // Enum Types
 export type ChatType = 'direct' | 'group' | 'ai';
@@ -15,6 +17,34 @@ export type TaskValue = string;
 export type ApproachValue = string;
 export type FormatValue = string;
 export type LengthValue = number;
+
+export type MessageStatus = 
+  | 'sending'
+  | 'sent'
+  | 'delivered'
+  | 'read'
+  | 'failed'
+  | 'deleted'
+  | 'edited';
+
+export type MessageType = 
+  | 'text'
+  | 'image'
+  | 'file' 
+  | 'audio'
+  | 'video'
+  | 'system'
+  | 'event';
+
+export type MessageRole = 'user' | 'assistant' | 'system';
+
+export type MessageEvent = 
+  | 'join'
+  | 'leave'
+  | 'typing'
+  | 'reaction'
+  | 'pin'
+  | 'unpin';
 
 // Chat Scope interface
 export interface ChatScope extends WithTimestamps, WithStatus {
@@ -64,15 +94,34 @@ export interface ChatParticipant extends WithStatus {
 }
 
 // Message Types
+// File: types/chat.ts
+
 export interface ChatMessage extends WithTimestamps {
   id: string;
   chat_id: string;
   sender_id: string;
   content: string;
+  rawContent?: string;
   type: 'text' | 'audio' | 'file';
+  role: MessageRole;
+  status: MessageStatus;
+  sender: User;
   metadata?: JsonB;
   is_read: boolean;
   read_at?: string | null;
+  threadId?: string;
+  thread?: MessageThread;
+  replyTo?: string;
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
+  mentions?: string[];
+  editHistory?: MessageEdit[];
+  isEditing?: boolean;
+  isFocused?: boolean;
+  isSelected?: boolean;
+  isHighlighted?: boolean;
+  readBy?: string[];
+  deliveredTo?: string[];
 }
 
 // Chat Body interface (for sending messages)
@@ -132,11 +181,16 @@ export interface ChatNotification extends WithTimestamps {
 export interface ChatState {
   chats: Chat[];
   currentChat: Chat | null;
+  currentUser: User;
   participants: ChatParticipant[];
   messages: ChatMessage[];
   isLoading: boolean;
   error: string | null;
+  isTyping: boolean;
+  hasMore: boolean;
+  users: User[];
 }
+
 
 // User Context for Chat
 export interface ChatUser {
@@ -146,4 +200,120 @@ export interface ChatUser {
   status: 'online' | 'offline';
   last_seen?: string;
 }
-// You can add more chat-related types or interfaces here as needed
+
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  users: string[]; // user IDs
+}
+
+export interface MessageAttachment {
+  id: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  url: string;
+  thumbnailUrl?: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    preview?: string;
+  };
+}
+
+export interface MessageThread {
+  id: string;
+  parentId: string;
+  replyCount: number;
+  lastReplyAt: string;
+  participants: string[]; // user IDs
+}
+
+export interface MessageEdit {
+  timestamp: string;
+  content: string;
+  editedBy: string; // user ID
+}
+
+// Component Props Interfaces
+export interface MessageActionsProps {
+  message: ChatMessage;  // Changed from Message
+  currentUser: User;
+  onEdit?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
+  onPin?: (messageId: string) => void;
+  onCopy?: (messageId: string) => void;
+  onForward?: (messageId: string) => void;
+  variant?: 'sent' | 'received';
+}
+
+export interface MessageBoxProps {
+  message: ChatMessage;  // Changed from Message
+  showFormatting?: boolean;
+  maxHeight?: number;
+  isEditing?: boolean;
+  onEditComplete?: (content: string) => void;
+}
+
+export interface MessageBoxProps {
+  message: ChatMessage;  // Changed from Message
+  showFormatting?: boolean;
+  maxHeight?: number;
+  isEditing?: boolean;
+  onEditComplete?: (content: string) => void;
+}
+
+export interface LightboxProps {
+  images: string[];
+  initialIndex?: number;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+}
+
+// Chat Context Types
+export interface ChatContextValue {
+  messages: ChatMessage[];  // Changed from Message[]
+  users: User[];
+  currentUser: User;
+  isTyping: boolean;
+  hasMore: boolean;
+  loadMore: () => Promise<void>;
+  sendMessage: (content: string, attachments?: File[]) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  markAsRead: (messageId: string) => Promise<void>;
+}
+
+export interface ChatContextType {
+  state: ChatState;
+  sendMessage: (content: string) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  markAsRead: (messageId: string) => Promise<void>;
+  setTyping: (isTyping: boolean) => void;
+  loadMore: () => Promise<void>;
+  currentUser: User;
+}
+
+export interface MessageActionProps {
+  message: ChatMessage; 
+  currentUser: User;
+  onEdit: (event: React.MouseEvent) => void;
+  onDelete: (event: React.MouseEvent) => void;
+  onReply?: (event: React.MouseEvent) => void;
+  onPin?: (event: React.MouseEvent) => void;
+  variant?: 'sent' | 'received';
+}
+
+export interface MessageAttachmentsProps {
+  attachments: MessageAttachment[];
+  onImageClick?: (index: number) => void;
+  onFileClick?: (attachment: MessageAttachment) => void;
+  layout?: 'grid' | 'list';
+}

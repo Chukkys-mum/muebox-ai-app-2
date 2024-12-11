@@ -10,6 +10,9 @@ export interface User {
   full_name?: string;
   avatar_url?: string;
   credits?: number;
+  role: 'admin' | 'moderator' | 'user';
+  status?: 'online' | 'offline' | 'away';
+  typing?: boolean;
 }
 
 

@@ -3,6 +3,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './custom.css';
+
 :root {
   --radius: 10px;
   --chart: #0F172A;

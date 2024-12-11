@@ -1,6 +1,7 @@
 // app/components/FileSystemWrapper.tsx
 
 'use client';
+
 import { FileService } from '@/services/files/FileService';
 import FileListGrid from '@/components/dashboard/files/FileListGrid';
 import FolderListGrid from '@/components/dashboard/files/FolderListGrid';
@@ -8,6 +9,7 @@ import { handleEntityAction } from '@/app/actions/fileSystemActions';
 import { useToast } from '@/components/ui/use-toast';
 import { useState, useEffect } from 'react';
 import type { FileRow, FileAction } from '@/types';
+import { supabase } from '@/utils/supabase/client';
 
 export default function FileSystemWrapper() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,11 +20,16 @@ export default function FileSystemWrapper() {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      const fileService = new FileService();
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Not authenticated');
+        }
+
+        const fileService = new FileService();
         const [initialFiles, initialFolders] = await Promise.all([
-          fileService.fetchFiles(),
-          fileService.fetchFolders()
+          fileService.fetchFiles(user.id),
+          fileService.fetchFolders(user.id)
         ]);
         setFiles(initialFiles);
         setFolders(initialFolders);
@@ -54,11 +61,15 @@ export default function FileSystemWrapper() {
             title: 'Success',
             description: result.message
           });
+
           // Refresh files/folders after successful action
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Not authenticated');
+          
           const fileService = new FileService();
           const [newFiles, newFolders] = await Promise.all([
-            fileService.fetchFiles(),
-            fileService.fetchFolders()
+            fileService.fetchFiles(user.id),
+            fileService.fetchFolders(user.id)
           ]);
           setFiles(newFiles);
           setFolders(newFolders);

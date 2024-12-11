@@ -1,10 +1,10 @@
 // utils/api-client.ts
 import {
-  ActivityLogEntry,
+  ActivityLog,
   UserDetails,
   Product,
   Subscription,
-} from '@/types/types';
+} from '@/types';
 
 // Device interfaces
 interface Device {
@@ -51,7 +51,7 @@ const api = {
   },
 
   activityLogs: {
-    list: async (params: PaginationParams): Promise<ApiResponse<ActivityLogEntry[]>> => {
+    list: async (params: PaginationParams): Promise<ApiResponse<ActivityLog[]>> => {
       const res = await fetch(
         `/api/activity-log?page=${params.page}&timeRange=${params.timeRange}`
       );

@@ -18,29 +18,30 @@ import {
   ProductsContext,
   SubscriptionContext,
   UserContext,
-  UserDetailsContext
+  UserDetailsContext,
+  UserDetails,
+  ProductWithPrice,
+  SubscriptionWithProduct,
+  UserProvider,
+  UserDetailsProvider,
+  OpenProvider,
+  PlanProvider,
+  ProductsProvider,
+  SubscriptionProvider
 } from '@/context/layout';
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 type Price = Database['public']['Tables']['prices']['Row'];
-interface ProductWithPrices extends Product {
-  prices: Price[];
-}
-interface PriceWithProduct extends Price {
-  products: Product | null;
-}
-interface SubscriptionWithProduct extends Subscription {
-  prices: PriceWithProduct | null;
-}
+
 interface Props {
   children: React.ReactNode;
-  title?: string;  // Made optional
-  description?: string;  // Made optional
+  title?: string;
+  description?: string;
   user: User | null | undefined;
-  products: ProductWithPrices[];
+  products: ProductWithPrice[];
   subscription: SubscriptionWithProduct | null;
-  userDetails: { [x: string]: any } | null;
+  userDetails: UserDetails | null;
 }
 
 const DashboardLayout: React.FC<Props> = (props: Props) => {
@@ -52,14 +53,14 @@ const DashboardLayout: React.FC<Props> = (props: Props) => {
   });
 
   return (
-    <UserContext.Provider value={props.user || null}>
-      <UserDetailsContext.Provider value={props.userDetails}>
-        <OpenContext.Provider value={{ open, setOpen }}>
-          <PlanContext.Provider value={{ plan, setPlan }}>
-            <ProductsContext.Provider value={props.products}>
-              <SubscriptionContext.Provider value={props.subscription}>
+    <UserProvider value={props.user || null}>
+      <UserDetailsProvider value={props.userDetails}>
+        <OpenProvider>
+          <PlanProvider initialValue={plan}>
+            <ProductsProvider value={props.products}>
+              <SubscriptionProvider value={props.subscription}>
                 <div className="dark:bg-background-900 flex h-full w-full bg-white">
-                  <Sidebar routes={routes} setOpen={setOpen} />
+                  <Sidebar routes={routes} />
                   <div className="h-full w-full dark:bg-zinc-950">
                     <main
                       className={`mx-2.5 flex-none transition-all dark:bg-zinc-950 md:pr-2 xl:ml-[328px]`}
@@ -74,12 +75,12 @@ const DashboardLayout: React.FC<Props> = (props: Props) => {
                     </main>
                   </div>
                 </div>
-              </SubscriptionContext.Provider>
-            </ProductsContext.Provider>
-          </PlanContext.Provider>
-        </OpenContext.Provider>
-      </UserDetailsContext.Provider>
-    </UserContext.Provider>
+              </SubscriptionProvider>
+            </ProductsProvider>
+          </PlanProvider>
+        </OpenProvider>
+      </UserDetailsProvider>
+    </UserProvider>
   );
 };
 

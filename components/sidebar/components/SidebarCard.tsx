@@ -2,225 +2,168 @@
 
 'use client';
 
+import { useState, useContext } from 'react';
+import { FaUser } from 'react-icons/fa';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import {
-  PlanContext,
-  // OpenContext,
-  ProductsContext,
-  SubscriptionContext
-  // UserContext,
-  // UserDetailsContext
-} from '@/context/layout';
-import modalImagedark from '@/public/img/dark/modal/modal.png';
-import modalImage from '@/public/img/light/modal/modal.png';
-import SidebarImage from '@/public/SidebarBadge.png';
-import { Database } from '@/types/types_db';
-import { useTheme } from 'next-themes';
-import Image from 'next/image';
-import { useContext } from 'react';
 import { BiSolidCheckSquare } from 'react-icons/bi';
 import { IoIosStar } from 'react-icons/io';
+import TeamSwitcher from './TeamSwitcher';
+import {
+  useUser,
+  usePlan,
+  useProducts,
+  SubscriptionContext,
+  UserDetailsContext,
+  UserDetails,
+  ProductWithPrice,
+} from '@/context/layout';
+import type { Price } from '@/types/subscription';  
 
-type Price = Database['public']['Tables']['prices']['Row'];
-interface SidebarCard {
-  [x: string]: any;
+interface SidebarCardProps {
+  collapsed: boolean;
 }
-export default function SidebarDocs(props: SidebarCard) {
-  const { theme, setTheme } = useTheme();
 
-  const { plan, setPlan } = useContext(PlanContext);
-  // const { open, setOpen } = useContext(OpenContext);
-  const products = useContext(ProductsContext);
-  // const user = useContext(UserContext);
-  // const userDetails = useContext(UserDetailsContext);
+export default function SidebarCard({ collapsed }: SidebarCardProps) {
+  const [showTeamSwitcher, setShowTeamSwitcher] = useState(false);
+  const user = useUser();
+  const userDetails = useContext(UserDetailsContext);
   const subscription = useContext(SubscriptionContext);
-  if (subscription) {
-    return (
-      // <div className="relative flex w-[calc(100%_-_10px)] items-center   border border-zinc-200 px-4 py-4 dark:border-zinc-800">
-      <div className="relative flex items-center w-full rounded-md border border-zinc-200 px-4 py-4 dark:border-zinc-800">
-        <Image
-          width="54"
-          height="30"
-          className="mr-2.5 w-[27px]"
-          src={SidebarImage.src}
-          alt=""
-        />
-        <div className="flex w-full flex-col justify-center">
-          <p className="mb-0.5 text-sm font-bold text-foreground dark:text-white">
-            PRO Member
+  const { plan, setPlan } = usePlan();
+  const products = useProducts();
+
+  const handlePlanSelection = (productId: string, priceId: string) => {
+    setPlan({
+      product: productId,
+      price: priceId
+    });
+  };
+
+  // Component for PRO users
+  const ProCard = () => (
+    <div className={`flex items-center border-t border-gray-600 dark:border-gray-800
+      ${collapsed ? 'justify-center p-4' : 'p-4'}`}>
+      <Avatar className={`${collapsed ? 'h-8 w-8' : 'h-10 w-10'}`}>
+        <AvatarImage src={user?.user_metadata?.avatar_url} />
+        <AvatarFallback className="font-bold dark:text-foreground">
+          {userDetails?.full_name?.[0]?.toUpperCase() || 'U'}
+        </AvatarFallback>
+      </Avatar>
+      
+      {!collapsed && (
+        <div className="ml-3 flex-grow">
+          <p className="text-sm font-semibold text-white dark:text-white">
+            {userDetails?.full_name || 'Pro User'}
           </p>
-          <p className="text-sm font-medium text-foreground dark:text-white">
-            Unlimited plan active
-          </p>
+          <Badge className="mt-1 bg-gradient-to-r from-purple-500 to-blue-500">
+            PRO
+          </Badge>
         </div>
-      </div>
-    );
-  } else {
-    return (
-      <div className="relative flex flex-col items-center rounded-md border border-zinc-200 px-4 py-4 dark:border-white/10">
-        <Image
-          width="54"
-          height="30"
-          className="w-[54px]"
-          src={SidebarImage.src}
-          alt=""
-        />
-        <div className="mb-3 flex w-full flex-col pt-4">
-          <p className="mb-2.5 text-center text-lg font-bold text-foreground dark:text-white">
-            Upgrade to Unlimited
-          </p>
-          <p className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 focus:dark:!bg-white/20 active:dark:!bg-white/20">
-            Generate Premium Content by upgrading to an unlimited plan!
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="mb-1.5 mt-2.5 flex h-[unset] w-full items-center justify-center rounded-md px-4 py-4 text-sm font-medium">
-              Get started with PRO
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="min-w-max border-0 bg-white p-0 dark:bg-zinc-900">
-            <div className="flex">
-              <Image
-                width="340"
-                height="681"
-                src={theme === 'dark' ? modalImagedark.src : modalImage.src}
-                className="z-[100] hidden w-[340px] rounded-l-[16px] md:block"
-                alt="avatar"
-              />
-              <div className="dark:!bg-navy-800 flex flex-col rounded-l-2xl rounded-r-2xl bg-white px-[30px] py-[34px] dark:bg-zinc-900 md:w-[412px] md:min-w-[412px] md:rounded-l-[0px] md:px-[42px] lg:w-[456px] lg:min-w-[456px]">
-                <p className="mb-3 text-[26px] font-extrabold text-foreground dark:text-white">
-                  Upgrade to Unlimited
-                </p>
-                <p className="mb-6 font-medium text-foreground dark:text-zinc-400">
-                  Join 80,000+ users now
-                </p>
-                {/* Features */}
-                <div className="flex w-full flex-col xl:w-[80%]">
-                  <div className="mb-5 flex items-center">
-                    <BiSolidCheckSquare className="mr-2.5 h-[20px] w-[20px] text-foreground dark:text-white" />
-                    <span className="text-sm font-medium text-foreground dark:text-white">
-                      Access to 12+ Essay types
-                    </span>
-                  </div>
-                  <div className="mb-5 flex items-center">
-                    <BiSolidCheckSquare className="mr-2.5 h-[20px] w-[20px] text-foreground dark:text-white" />
-                    <span className="text-sm font-medium text-foreground dark:text-white">
-                      Up to 1500 words per Essay
-                    </span>
-                  </div>
-                  <div className="mb-5 flex items-center">
-                    <BiSolidCheckSquare className="mr-2.5 h-[20px] w-[20px] text-foreground dark:text-white" />
-                    <span className="text-sm font-medium text-foreground dark:text-white">
-                      Academic Citation formats (APA, etc.)
-                    </span>
-                  </div>
-                  <div className="mb-5 flex items-center">
-                    <BiSolidCheckSquare className="mr-2.5 h-[20px] w-[20px] text-foreground dark:text-white" />
-                    <span className="text-sm font-medium text-foreground dark:text-white">
-                      Academic Levels (Master, etc.)
-                    </span>
-                  </div>
-                  <div className="mb-6 flex items-center">
-                    <BiSolidCheckSquare className="mr-2.5 h-[20px] w-[20px] text-foreground dark:text-white" />
-                    <span className="text-sm font-medium text-foreground dark:text-white">
-                      Essay Tones (Academic, etc.)
-                    </span>
-                  </div>
+      )}
+      
+      <button
+        onClick={() => setShowTeamSwitcher(true)}
+        className="ml-2 text-gray-400 hover:text-white transition-colors"
+      >
+        <FaUser className={`${collapsed ? 'h-4 w-4' : 'h-5 w-5'}`} />
+      </button>
+    </div>
+  );
+
+  // Component for free users
+  const FreeCard = () => (
+    <div className={`border-t border-gray-600 dark:border-gray-800
+      ${collapsed ? 'p-2' : 'p-4'}`}>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button
+            className={`w-full bg-gradient-to-r from-purple-500 to-blue-500 
+              hover:from-purple-600 hover:to-blue-600 text-white
+              ${collapsed ? 'p-2' : 'px-4 py-2'}`}
+          >
+            {collapsed ? 'PRO' : 'Upgrade to PRO'}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Upgrade to PRO</h2>
+            <div className="space-y-4">
+              {/* Features */}
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <BiSolidCheckSquare className="h-5 w-5 text-purple-500 mr-2" />
+                  <span>Access to all premium features</span>
                 </div>
-                {/* YEARLY */}
-                <div
-                  className={`relative flex items-center border ${
-                    plan.product === 'prod_QfhcnVrnDf2I75'
-                      ? 'border-zinc-950 dark:border-white'
-                      : 'border-zinc-200 dark:border-zinc-800'
-                  } mb-5 w-full cursor-pointer rounded-md px-4 py-[14px]`}
-                  onClick={() =>
-                    setPlan({
-                      product: 'prod_QfhcnVrnDf2I75',
-                      price: 'price_1PoMDDDWNoHJSR0zjpoiLOzj'
-                    })
-                  }
-                >
-                  <p className="mb-0.5 ml-2 mr-2 text-sm font-bold text-foreground dark:text-white">
-                    Yearly
-                  </p>
-                  <Badge className="flex rounded-full bg-green-500 px-2 py-0.5 text-sm font-bold text-foreground hover:bg-green-500 dark:text-white lg:hidden xl:flex">
-                    Save 35%
-                  </Badge>
-                  <p className="ml-auto flex font-medium text-foreground dark:text-white">
-                    $69
-                    <span className="ml-1 mt-0.5 text-sm font-medium text-foreground dark:text-zinc-400">
-                      /year
-                    </span>
-                  </p>
+                <div className="flex items-center">
+                  <BiSolidCheckSquare className="h-5 w-5 text-purple-500 mr-2" />
+                  <span>Priority support</span>
                 </div>
-                {/* END YEARLY */}
-                {/* MONTHLY */}
-                <div
-                  className={`relative flex items-center border ${
-                    plan.product === 'prod_QfhYC6AAtI5IKW'
-                      ? 'border-zinc-950 dark:border-white'
-                      : 'border-zinc-200 dark:border-zinc-800'
-                  } mb-7 w-full cursor-pointer rounded-md px-4 py-[14px]`}
-                  onClick={() =>
-                    setPlan({
-                      product: 'prod_QfhYC6AAtI5IKW',
-                      price: 'price_1PoM9GDWNoHJSR0zmwpicH8y'
-                    })
-                  }
-                >
-                  <p className="mb-0.5 ml-2 mr-2 text-sm font-bold text-foreground dark:text-white">
-                    Monthly
-                  </p>
-                  <p className="ml-auto flex font-medium text-foreground dark:text-white">
-                    $9
-                    <span className="ml-1 mt-0.5 text-sm font-medium text-foreground dark:text-zinc-400">
-                      /month
-                    </span>
-                  </p>
-                </div>
-                {/* END MONTHLY */}
-                {products.map((product: any, key: number) => {
-                  const price = product?.prices?.find(
-                    (price: any) => price.id === plan.price
-                  );
-                  if (product.id === plan.product) {
-                    if (!price) return null;
-                    return (
-                      <Button
-                        key={key}
-                        className="mb-7 flex w-full items-center justify-center rounded-md px-4 py-5 text-sm font-medium"
-                        onClick={() => props.handleCheckout(price)}
-                      >
-                        Upgrade now
-                      </Button>
-                    );
-                  }
-                })}
-                <p className="mx-auto mb-[5px] text-xs font-semibold text-foreground dark:text-zinc-400">
-                  Used by 80,000+ customers monthly
-                </p>
-                <div className="mx-auto flex flex-row items-center">
-                  <IoIosStar className="mr-[1px] h-4 w-4 text-orange-500" />
-                  <IoIosStar className="mr-[1px] h-4 w-4 text-orange-500" />
-                  <IoIosStar className="mr-[1px] h-4 w-4 text-orange-500" />
-                  <IoIosStar className="mr-[1px] h-4 w-4 text-orange-500" />
-                  <IoIosStar className="mr-1.5 h-4 w-4 text-orange-500" />
-                  <p className="h-full text-sm  font-extrabold text-foreground dark:text-white">
-                    4.9
-                  </p>
+                <div className="flex items-center">
+                  <BiSolidCheckSquare className="h-5 w-5 text-purple-500 mr-2" />
+                  <span>Advanced analytics</span>
                 </div>
               </div>
+
+              {/* Plans */}
+              {products.map((product: ProductWithPrice) => (
+                product.prices?.filter(price => price.unit_amount !== undefined)
+                  .map((price: Price) => (  // Add the Price type here
+                  <div
+                    key={price.id}
+                    className={`p-4 border rounded-lg cursor-pointer
+                      ${plan.price === price.id ? 'border-purple-500' : 'border-gray-200'}
+                    `}
+                    onClick={() => handlePlanSelection(product.id, price.id)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">{price.interval === 'year' ? 'Yearly' : 'Monthly'}</p>
+                        <p className="text-sm text-gray-500">
+                          {price.interval === 'year' ? 'Save 20%' : 'Flexible plan'}
+                        </p>
+                      </div>
+                      <p className="text-xl font-bold">
+                        ${(price.unit_amount ?? 0) / 100}  {/* Add null coalescing operator */}
+                        <span className="text-sm text-gray-500">/{price.interval}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ))}
             </div>
-          </DialogContent>
-        </Dialog>
-        <p className="mb-1 mt-2 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-          Join 80,000+ users now
-        </p>
-      </div>
-    );
-  }
+
+            {/* Reviews */}
+            <div className="mt-6 text-center">
+              <div className="flex justify-center">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <IoIosStar key={star} className="h-5 w-5 text-yellow-400" />
+                ))}
+              </div>
+              <p className="text-sm text-gray-500 mt-2">Loved by thousands of users</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {!collapsed && (
+        <button
+          onClick={() => setShowTeamSwitcher(true)}
+          className="mt-4 w-full text-sm text-gray-400 hover:text-white transition-colors text-center"
+        >
+          Switch Team
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {subscription ? <ProCard /> : <FreeCard />}
+      {showTeamSwitcher && (
+        <TeamSwitcher onClose={() => setShowTeamSwitcher(false)} />
+      )}
+    </>
+  );
 }

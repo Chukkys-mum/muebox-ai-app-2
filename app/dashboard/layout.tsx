@@ -8,6 +8,7 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
+import { adaptProductWithPrices, adaptSubscriptionWithProduct } from '@/types/adapters';
 import { redirect } from 'next/navigation';
 import { ReactNode } from 'react';
 
@@ -19,7 +20,7 @@ export default async function DashboardRootLayout({
   const supabase = createClient();
 
   try {
-    const [user, userDetails, products, subscription] = await Promise.all([
+    const [user, userDetails, dbProducts, dbSubscription] = await Promise.all([
       getUser(supabase),
       getUserDetails(supabase),
       getProducts(supabase),
@@ -29,6 +30,10 @@ export default async function DashboardRootLayout({
     if (!user) {
       return redirect('/dashboard/signin');
     }
+
+    // Convert the types using adapters
+    const products = dbProducts?.map(adaptProductWithPrices) || [];
+    const subscription = dbSubscription ? adaptSubscriptionWithProduct(dbSubscription) : null;
 
     return (
       <DashboardLayout

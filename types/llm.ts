@@ -14,7 +14,7 @@ export interface LLMProvider extends WithTimestamps {
 }
 
 // LLM interface
-export interface LLM extends WithTimestamps, WithStatus {
+export interface LLM extends WithTimestamps {
   id: string;
   name: string;
   theme?: string;

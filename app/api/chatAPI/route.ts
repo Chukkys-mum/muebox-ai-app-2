@@ -1,15 +1,13 @@
 // /app/api/chatAPI/route.ts
 
-import { OpenAIStream, StreamingTextResponse } from 'ai';
-import { Configuration, OpenAIApi } from 'openai-edge';
+import OpenAI from 'openai';
 import { kv } from '@vercel/kv';
 
 export const runtime = 'edge';
 
-const config = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
 });
-const openai = new OpenAIApi(config);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -36,23 +34,35 @@ export async function POST(req: Request) {
 
     const systemMessage = `You are an AI assistant with a ${personality} personality, focusing on ${chatScope} topics. Please respond accordingly.`;
 
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: model || 'gpt-3.5-turbo',
-      stream: true,
       messages: [
         { role: 'system', content: systemMessage },
         ...messages
-      ]
+      ],
+      stream: true,
     });
 
-    const stream = OpenAIStream(response);
+    // Create a custom stream
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of response) {
+          const text = chunk.choices[0]?.delta?.content || '';
+          controller.enqueue(new TextEncoder().encode(text));
+        }
+        controller.close();
+      },
+    });
 
     // Store the conversation
     if (conversationId) {
       await kv.set(`conversation:${conversationId}`, messages);
     }
 
-    return new StreamingTextResponse(stream);
+    // Return the stream
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   } catch (error) {
     console.error('Error in POST method:', error);
     return new Response('Error', { status: 500 });

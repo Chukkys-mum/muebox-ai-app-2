@@ -1,6 +1,7 @@
 // types/ui.ts
 
 import { ComponentType, ReactNode } from 'react';
+import { IconType } from 'react-icons';
 
 // Page Meta interface
 export interface PageMeta {
@@ -16,17 +17,15 @@ export interface IRoute {
   layout?: string;
   exact?: boolean;
   component?: ComponentType;
-  icon?: JSX.Element;
+  icon?: IconType;  // Changed from JSX.Element to IconType
   secondary?: boolean;
   collapse?: boolean;
   items?: IRoute[];
   rightElement?: boolean;
   invisible?: boolean;
+  isPremium?: boolean;  // Add this
+  isSection?: boolean;  // Add this
 }
-
-// You can add more UI-related types or interfaces here as needed
-
-// For example, you might want to add types for common UI components:
 
 export interface ButtonProps {
   onClick?: () => void;

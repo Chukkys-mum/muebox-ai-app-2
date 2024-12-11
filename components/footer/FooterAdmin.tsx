@@ -4,11 +4,10 @@
 
 export default function Footer() {
   return (
-    <div className="flex w-full flex-col items-center justify-between px-1 pb-8 pt-3 xl:flex-row">
-      <p className="mb-4 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-lg">
-        <span className="mb-4 text-center text-sm text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-sm">
-          ©{new Date().getFullYear()} Muebox Ai. All Rights
-          Reserved.
+    <div className="flex w-full flex-col items-center justify-between px-1 pb-4 pt-2 h-[30px] xl:flex-row">
+      <p className="mb-2 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-lg">
+        <span className="mb-2 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-xs">
+          ©{new Date().getFullYear()} Muebox Ai. All Rights Reserved.
         </span>
       </p>
       <div>
@@ -17,7 +16,7 @@ export default function Footer() {
             <a
               target="blank"
               href="mailto:hello@simmmple.com"
-              className="text-sm font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
+              className="text-xs font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
             >
               FAQs
             </a>
@@ -26,7 +25,7 @@ export default function Footer() {
             <a
               target="blank"
               href="https://horizon-ui.com/"
-              className="text-sm font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
+              className="text-xs font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
             >
               Privacy Policy
             </a>
@@ -35,7 +34,7 @@ export default function Footer() {
             <a
               target="blank"
               href="https://horizon-ui.com/boilerplate"
-              className="text-sm font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
+              className="text-xs font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
             >
               Terms & Conditions
             </a>
@@ -44,7 +43,7 @@ export default function Footer() {
             <a
               target="blank"
               href="https://blog.horizon-ui.com/"
-              className="text-sm font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
+              className="text-xs font-medium text-zinc-500 hover:text-foreground dark:text-zinc-400"
             >
               Refund Policy
             </a>
@@ -53,4 +52,4 @@ export default function Footer() {
       </div>
     </div>
   );
-}
+}  

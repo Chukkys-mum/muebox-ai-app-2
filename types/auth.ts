@@ -74,4 +74,14 @@ export interface AccountUser extends WithTimestamps, WithStatus {
   metadata?: Record<string, any>;
 }
 
+interface PermissionQueryResponse {
+  role_id: string;
+  roles: {
+    permission_scheme_id: string;
+    permission_schemes: {
+      permissions: string[];
+    } | null;
+  } | null;
+}
+
 // You can add more auth-related types or interfaces here as needed

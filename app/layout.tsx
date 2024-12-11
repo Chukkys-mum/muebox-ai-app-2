@@ -1,18 +1,36 @@
-// /app/layout.tsx
+// app/layout.tsx
 
-import '@/styles/globals.css';
-import { PropsWithChildren } from 'react';
+import { Suspense } from 'react';
 import SupabaseProvider from './supabase-provider';
 import { ThemeProvider } from './theme-provider';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import Loading from './loading';
+import '@/styles/globals.css';
 
 export const dynamic = 'force-dynamic';
 
-export default function RootLayout({
-  // Layouts must accept a children prop.
-  // This will be populated with nested layouts or pages
+function RootLayoutInner({
   children
-}: PropsWithChildren) {
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <SupabaseProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Suspense fallback={<Loading />}>
+          {children}
+        </Suspense>
+        <Toaster />
+      </ThemeProvider>
+    </SupabaseProvider>
+  );
+}
+
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
@@ -72,14 +90,10 @@ export default function RootLayout({
         <link rel="canonical" href="https://your-website.com" />
         <link rel="icon" href="/img/favicon.ico" />
       </head>
-      <body id={'root'} className="loading bg-white">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SupabaseProvider>
-            {/* @ts-ignore */}
-            <main id="skip">{children}</main>
-            <Toaster />
-          </SupabaseProvider>
-        </ThemeProvider>
+      <body className="loading bg-white">
+        <RootLayoutInner>
+          <main id="skip">{children}</main>
+        </RootLayoutInner>
       </body>
     </html>
   );
