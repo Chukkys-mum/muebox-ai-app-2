@@ -23,7 +23,12 @@ interface SubscriptionWithProduct extends Subscription {
   prices: PriceWithProduct | null;
 }
 
-export const getUser = async (supabase: SupabaseClient): Promise<User | null> => {
+// Update the type to match the client from createServerClient
+type TypedSupabaseClient = SupabaseClient<Database>;
+
+export const getUser = async (
+  supabase: TypedSupabaseClient
+): Promise<User | null> => {
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error) {
@@ -35,7 +40,7 @@ export const getUser = async (supabase: SupabaseClient): Promise<User | null> =>
 };
 
 export const getSubscription = async (
-  supabase: SupabaseClient
+  supabase: TypedSupabaseClient
 ): Promise<SubscriptionWithProduct | null> => {
   const { data, error } = await supabase
     .from('subscriptions')
@@ -52,7 +57,7 @@ export const getSubscription = async (
 };
 
 export const getProducts = async (
-  supabase: SupabaseClient
+  supabase: TypedSupabaseClient
 ): Promise<ProductWithPrices[]> => {
   const { data, error } = await supabase
     .from('products')
@@ -70,10 +75,8 @@ export const getProducts = async (
   return (data as ProductWithPrices[]) ?? [];
 };
 
-// utils/supabase/queries.ts
-
 export const getUserDetails = async (
-  supabase: SupabaseClient
+  supabase: TypedSupabaseClient
 ): Promise<Tables['users']['Row'] | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -125,7 +128,7 @@ export const getUserDetails = async (
 };
 
 export const getProductsWithPrices = async (
-  supabase: SupabaseClient
+  supabase: TypedSupabaseClient
 ): Promise<{ products: ProductWithPrices[] }> => {
   const { data, error } = await supabase
     .from('products')

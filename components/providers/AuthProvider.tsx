@@ -1,132 +1,73 @@
 //  /components/providers/AuthProvider.tsx
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
-import type { Tables } from '@/types/types_db';
-import type { ProductWithPrice, SubscriptionWithProduct } from '@/types/subscription';
+'use client';
 
-// Context types
-interface AuthContextType {
+import { createContext, useContext, useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import type { User, Session } from '@supabase/supabase-js';
+
+type AuthContextType = {
   user: User | null;
-  userDetails: Tables<'users'> | null;
-  products: ProductWithPrice[];
-  subscription: SubscriptionWithProduct | null;
+  session: Session | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-}
+};
 
-// Create the context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  isLoading: true,
+  signOut: async () => {},
+});
 
-// Provider component
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [userDetails, setUserDetails] = useState<Tables<'users'> | null>(null);
-  const [products, setProducts] = useState<ProductWithPrice[]>([]);
-  const [subscription, setSubscription] = useState<SubscriptionWithProduct | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialSession,
+}: {
+  children: React.ReactNode;
+  initialSession: Session | null;
+}) {
+  const supabase = createClientComponentClient();
+  const [session, setSession] = useState<Session | null>(initialSession);
+  const [user, setUser] = useState<User | null>(initialSession?.user || null);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialSession);
 
   useEffect(() => {
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        if (session?.user) {
-          setUser(session.user);
-          await refreshUserData(session.user.id);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setIsLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        setSession(currentSession);
+      } else {
+        setUser(null);
+        setSession(null);
       }
-    };
-
-    initializeAuth();
-
-    // Set up auth state change listener
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await refreshUserData(session.user.id);
-        } else {
-          setUser(null);
-          setUserDetails(null);
-          setSubscription(null);
-        }
-        router.refresh();
-      }
-    );
+      setIsLoading(false);
+    });
 
     return () => {
-      authListener.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, [supabase, router]);
-
-  const refreshUserData = async (userId: string) => {
-    try {
-      const [userDetailsResponse, productsResponse, subscriptionResponse] = await Promise.all([
-        supabase.from('users').select('*').eq('id', userId).single(),
-        supabase.from('products').select('*, prices(*)').eq('active', true),
-        supabase.from('subscriptions')
-          .select('*, prices(*, products(*))')
-          .eq('user_id', userId)
-          .in('status', ['trialing', 'active'])
-          .single()
-      ]);
-
-      if (userDetailsResponse.data) setUserDetails(userDetailsResponse.data);
-      if (productsResponse.data) setProducts(productsResponse.data);
-      if (subscriptionResponse.data) setSubscription(subscriptionResponse.data);
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
-    }
-  };
+  }, [supabase]);
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    router.push('/signin');
-  };
-
-  const refreshSession = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (session?.user) {
-      await refreshUserData(session.user.id);
-    }
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider 
-      value={{
-        user,
-        userDetails,
-        products,
-        subscription,
-        isLoading,
-        signOut,
-        refreshSession
-      }}
-    >
+    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook for using the auth context
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

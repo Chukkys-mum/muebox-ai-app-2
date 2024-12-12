@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import {
   renderThumb,
   renderTrack,
@@ -11,18 +11,14 @@ import {
 import Links from '@/components/sidebar/components/Links';
 import SidebarCard from '@/components/sidebar/components/SidebarCard';
 import { Card } from '@/components/ui/card';
-import {
-  useUser,
-  useOpen,
-  UserDetailsContext,
-  SubscriptionContext,
-} from '@/context/layout';
 import { IRoute } from '@/types/ui';
-import { FaChevronLeft } from 'react-icons/fa';
+import type { Database } from '@/types/types_db';
 import { HiBolt } from 'react-icons/hi2';
 import { Scrollbars } from 'react-custom-scrollbars-2';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { useSupabase } from '@/app/supabase-provider';
+import { useRouter } from 'next/navigation';
+import { logger } from '@/utils/logger';
 
 const NAVBAR_HEIGHT = '64px';
 
@@ -33,50 +29,60 @@ interface SidebarProps {
 export default function Sidebar({ routes }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { open, setOpen } = useOpen(); // Use the hook instead of useContext
-  const user = useUser(); // Use the hook instead of useContext
-  const userDetails = useContext(UserDetailsContext);
-  const subscription = useContext(SubscriptionContext);
+  const [accounts, setAccounts] = useState<
+    Database['public']['Tables']['accounts']['Row'][] | null
+  >(null);
+  const [currentAccount, setCurrentAccount] = useState<
+    Database['public']['Tables']['accounts']['Row'] | null
+  >(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const { supabase } = useSupabase();
+  const { supabase, user } = useSupabase();
+  const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const fetchAccounts = async () => {
+      if (!user?.id) return; // Ensure user ID is defined
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        // You might want to update the UserContext here if it's not already being done elsewhere
-        setIsLoading(false);
+        const { data: accountUsers } = await supabase
+          .from('account_users')
+          .select('account_id, is_primary')
+          .eq('user_id', user.id);
+
+        if (accountUsers?.length) {
+          const accountIds = accountUsers.map((au) => au.account_id);
+          const { data: accounts } = await supabase
+            .from('accounts')
+            .select('*')
+            .in('id', accountIds);
+          setAccounts(accounts || null);
+          setCurrentAccount(
+            accounts?.find((acc) =>
+              accountUsers.some((au) => au.account_id === acc.id && au.is_primary)
+            ) || accounts?.[0] || null
+          );
+        }
       } catch (error) {
-        console.error('Error checking auth:', error);
+        logger.error('Error fetching accounts:', { error });
+      } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuth();
-  }, [supabase.auth]);
-
-  useEffect(() => {
-    if (isMobile) {
-      setCollapsed(true);
-      setOpen(false);
-    }
-  }, [isMobile, setOpen]);
+    fetchAccounts();
+  }, [supabase, user]);
 
   const toggleSidebar = () => {
-    const newCollapsedState = !collapsed;
-    setCollapsed(newCollapsedState);
-    setOpen(!newCollapsedState);
+    setCollapsed(!collapsed);
   };
 
   if (isLoading) {
-    return <div>Loading...</div>; // Or a more sophisticated loading indicator
+    return <div>Loading...</div>;
   }
 
   return (
     <aside
       className={`fixed left-0 transition-all duration-300 z-[99] min-h-full
         ${collapsed ? 'w-20' : 'w-64'}
-        ${open ? '' : '-translate-x-full'}
         ${isMobile ? 'lg:flex' : 'flex'}`}
       style={{
         top: NAVBAR_HEIGHT,
@@ -93,9 +99,11 @@ export default function Sidebar({ routes }: SidebarProps) {
               <HiBolt className="h-5 w-5" />
             </div>
             {!collapsed && (
-              <h5 className="ml-3 text-xl font-bold text-white dark:text-white">
-                Horizon AI
-              </h5>
+              <div>
+                <h5 className="ml-3 text-xl font-bold text-white dark:text-white">
+                  {currentAccount?.name || 'Horizon AI'}
+                </h5>
+              </div>
             )}
           </div>
         </div>
@@ -118,14 +126,7 @@ export default function Sidebar({ routes }: SidebarProps) {
               flex items-center transition-colors
               ${collapsed ? 'justify-center p-4' : 'justify-between p-4'}`}
           >
-            {collapsed ? (
-              <FaChevronLeft className="transform rotate-180" />
-            ) : (
-              <>
-                <span>Collapsed view</span>
-                <FaChevronLeft />
-              </>
-            )}
+            Toggle Sidebar
           </button>
         </div>
       </Card>

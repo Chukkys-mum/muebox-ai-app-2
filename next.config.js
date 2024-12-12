@@ -1,4 +1,3 @@
-
 const nextConfig = {
   reactStrictMode: false,
   images: {
@@ -23,6 +22,9 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
+    // Disable webpack cache to prevent warnings
+    config.cache = false;
+    
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -30,8 +32,22 @@ const nextConfig = {
         tls: false,
       };
     }
+
+    // Add experiments configuration
+    config.experiments = {
+      ...config.experiments,
+      topLevelAwait: true,
+    };
+
     return config;
   },
+  // Update experimental features with proper configuration
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+      allowedOrigins: ['localhost:3000']
+    }
+  }
 };
 
 module.exports = nextConfig;

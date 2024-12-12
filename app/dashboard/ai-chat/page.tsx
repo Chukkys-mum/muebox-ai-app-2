@@ -6,33 +6,38 @@ import {
   getUser,
   getUserDetails,
   getProducts,
-  getSubscription
+  getSubscription,
 } from '@/utils/supabase/queries';
 import {
   adaptProductWithPrices,
-  adaptSubscriptionWithProduct
+  adaptSubscriptionWithProduct,
 } from '@/types/adapters';
 import {
   UserProvider,
   UserDetailsProvider,
   ProductsProvider,
-  SubscriptionProvider
+  SubscriptionProvider,
 } from '@/context/layout';
 
-// Server Component
 export default async function AiChatPage() {
-  const supabase = createClient();
+  // Ensure await is used for the client creation
+  const supabase = await createClient();
+
+  // Fetch data from Supabase using Promise.all
   const [user, userDetails, dbProducts, dbSubscription] = await Promise.all([
     getUser(supabase),
     getUserDetails(supabase),
     getProducts(supabase),
-    getSubscription(supabase)
+    getSubscription(supabase),
   ]);
 
-  // Adapt the data to match the expected types
+  // Adapt data to match the expected types
   const products = dbProducts.map(adaptProductWithPrices);
-  const subscription = dbSubscription ? adaptSubscriptionWithProduct(dbSubscription) : null;
+  const subscription = dbSubscription
+    ? adaptSubscriptionWithProduct(dbSubscription)
+    : null;
 
+  // Provide context to child components and render the Chat component
   return (
     <UserProvider value={user}>
       <UserDetailsProvider value={userDetails}>

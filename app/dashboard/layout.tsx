@@ -1,52 +1,41 @@
 // app/dashboard/layout.tsx
 
-import DashboardLayout from '@/components/layout';
-import {
-  getProducts,
-  getSubscription,
-  getUser,
-  getUserDetails
-} from '@/utils/supabase/queries';
-import { createClient } from '@/utils/supabase/server';
-import { adaptProductWithPrices, adaptSubscriptionWithProduct } from '@/types/adapters';
-import { redirect } from 'next/navigation';
 import { ReactNode } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardRootLayout({
-  children
+  children,
 }: {
   children: ReactNode;
 }) {
-  const supabase = createClient();
-
   try {
-    const [user, userDetails, dbProducts, dbSubscription] = await Promise.all([
-      getUser(supabase),
-      getUserDetails(supabase),
-      getProducts(supabase),
-      getSubscription(supabase)
-    ]);
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    if (!user) {
-      return redirect('/dashboard/signin');
+    if (error) {
+      console.error('Error fetching user:', error.message);
     }
 
-    // Convert the types using adapters
-    const products = dbProducts?.map(adaptProductWithPrices) || [];
-    const subscription = dbSubscription ? adaptSubscriptionWithProduct(dbSubscription) : null;
+    if (!user) {
+      console.log('User not authenticated, redirecting to signin');
+      redirect('/dashboard/signin');
+    }
 
     return (
-      <DashboardLayout
-        user={user}
-        products={products}
-        subscription={subscription}
-        userDetails={userDetails}
-      >
-        {children}
-      </DashboardLayout>
+      <div className="mx-auto max-w-8xl flex flex-col">
+        <div>{children}</div>
+      </div>
     );
-  } catch (error) {
-    console.error('Error loading dashboard data:', error);
-    return redirect('/dashboard/error');
+  } catch (err) {
+    console.error('Unexpected error in DashboardRootLayout:', err);
+    return (
+      <div className="mx-auto max-w-8xl flex flex-col">
+        <div>{children}</div>
+      </div>
+    );
   }
 }

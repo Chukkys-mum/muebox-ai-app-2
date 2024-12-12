@@ -3,7 +3,7 @@
 'use client';
 
 import { getURL } from '@/utils/helpers';
-import createClient from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client'; // Ensure single import
 import { type Provider } from '@supabase/supabase-js';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { redirectToPath } from './server';
@@ -16,43 +16,42 @@ export async function handleRequest(
   try {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
     const redirectUrl: string = await requestFunc(formData);
-    
-    console.log('Redirect URL:', redirectUrl); // Add this log
+
+    console.log('Redirect URL:', redirectUrl);
 
     if (router) {
       return router.push(redirectUrl);
     } else {
-      window.location.href = redirectUrl; // Change this line
+      window.location.href = redirectUrl;
       return;
     }
   } catch (error) {
     console.error('Request handling error:', error);
     const errorUrl = '/dashboard/signin/signup?error=Sign up failed.&error_description=An unexpected error occurred';
-    
+
     if (router) {
       return router.push(errorUrl);
     } else {
-      window.location.href = errorUrl; // Change this line
+      window.location.href = errorUrl;
       return;
     }
   }
 }
 
 export async function signInWithOAuth(e: React.FormEvent<HTMLFormElement>) {
-  // Prevent default form submission refresh
   e.preventDefault();
   const formData = new FormData(e.currentTarget);
   const provider = String(formData.get('provider')).trim() as Provider;
 
-  // Create client-side supabase client and call signInWithOAuth
-  const supabase = createClient();
+  const supabase = createClient(); // Use the correct client
   const redirectURL = getURL('/auth/callback');
   await supabase.auth.signInWithOAuth({
     provider: provider,
     options: {
-      redirectTo: redirectURL
-    }
+      redirectTo: redirectURL,
+    },
   });
 }
+
+

@@ -20,7 +20,7 @@ export async function redirectToPath(path: string) {
 export async function SignOut(formData: FormData) {
   const pathName = String(formData.get('pathName')).trim();
   
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
 
   if (error) {
@@ -49,13 +49,12 @@ export async function signInWithEmail(formData: FormData) {
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let options = {
     emailRedirectTo: callbackURL,
     shouldCreateUser: true
   };
 
-  // If allowPassword is false, do not create a new user
   const { allowPassword } = getAuthTypes();
   if (allowPassword) options.shouldCreateUser = false;
 
@@ -103,7 +102,6 @@ export async function requestPasswordUpdate(formData: FormData) {
     const email = String(formData.get('email')).trim();
     let redirectPath: string;
 
-    // Validate email first
     if (!isValidEmail(email)) {
       return getErrorRedirect(
         '/dashboard/signin/forgot_password',
@@ -112,7 +110,7 @@ export async function requestPasswordUpdate(formData: FormData) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: callbackURL
     });
@@ -140,7 +138,6 @@ export async function requestPasswordUpdate(formData: FormData) {
 
     return redirectPath;
   } catch (error) {
-    // Handle any unexpected errors
     console.error('Password reset error:', error);
     return getErrorRedirect(
       '/dashboard/signin/forgot_password',
@@ -157,7 +154,7 @@ export async function signInWithPassword(formData: FormData) {
   let redirectPath: string;
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -196,7 +193,6 @@ export async function signUp(formData: FormData) {
     const email = String(formData.get('email')).trim();
     const password = String(formData.get('password')).trim();
     
-    // Input validation
     if (!isValidEmail(email) || !password || password.length < 6) {
       return getErrorRedirect(
         '/dashboard/signin/signup',
@@ -205,9 +201,8 @@ export async function signUp(formData: FormData) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
-    // Create auth user
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
@@ -220,9 +215,6 @@ export async function signUp(formData: FormData) {
       }
     });
 
-    console.log('Sign up response:', { error, data });
-
-    // Handle existing user error
     if (error?.message === 'User already registered') {
       return getErrorRedirect(
         '/dashboard/signin/password_signin',
@@ -235,47 +227,43 @@ export async function signUp(formData: FormData) {
       return getErrorRedirect('/dashboard/signin/signup', 'Sign up failed', error.message);
     }
 
-    // If user created successfully, set up their trial
     if (data.user) {
-      // Create account record with trial status
       const { error: accountError } = await supabase
-      .from('accounts')
-      .insert({
-        id: data.user.id,
-        type: 'personal' as const,
-        name: data.user.email!,
-        status: 'active',
-        trial_credits: 2000,
-        credits: 0,
-        trial_start: new Date().toISOString(),
-        trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
-      });
+        .from('accounts')
+        .insert({
+          id: data.user.id,
+          type: 'personal' as const,
+          name: data.user.email!,
+          status: 'active',
+          trial_credits: 2000,
+          credits: 0,
+          trial_start: new Date().toISOString(),
+          trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
+        });
 
       if (accountError) {
         console.error('Failed to create account:', accountError);
       }
 
-      // Create trial subscription record
       const { error: subscriptionError } = await supabase
-      .from('subscriptions')
-      .insert({
-        id: `trial_${data.user.id}`,
-        account_id: data.user.id,
-        status: 'trialing' as const,
-        credits: 0,
-        trial_credits: 2000,
-        created: new Date().toISOString(),
-        trial_start: new Date().toISOString(), 
-        trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
-        current_period_start: new Date().toISOString(),
-        current_period_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
-      });
+        .from('subscriptions')
+        .insert({
+          id: `trial_${data.user.id}`,
+          account_id: data.user.id,
+          status: 'trialing' as const,
+          credits: 0,
+          trial_credits: 2000,
+          created: new Date().toISOString(),
+          trial_start: new Date().toISOString(), 
+          trial_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString()
+        });
 
       if (subscriptionError) {
         console.error('Failed to create subscription:', subscriptionError);
       }
 
-      // Explicitly set the session
       if (!data.session) {
         const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
           email,
@@ -290,10 +278,7 @@ export async function signUp(formData: FormData) {
       }
     }
 
-    // Check if session exists after potential sign-in
     const { data: { session } } = await supabase.auth.getSession();
-
-    console.log('Final session state:', session);
 
     return getStatusRedirect(
       '/dashboard/main',
@@ -312,7 +297,6 @@ export async function updatePassword(formData: FormData) {
     const password = String(formData.get('password')).trim();
     const passwordConfirm = String(formData.get('passwordConfirm')).trim();
     
-    // Check that the password and confirmation match with early return
     if (password !== passwordConfirm) {
       return getErrorRedirect(
         '/dashboard/signin/update_password',
@@ -329,7 +313,7 @@ export async function updatePassword(formData: FormData) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error, data } = await supabase.auth.updateUser({
       password
     });
@@ -367,7 +351,6 @@ export async function updateEmail(formData: FormData) {
   try {
     const newEmail = String(formData.get('newEmail')).trim();
  
-    // Validate email with early return
     if (!isValidEmail(newEmail)) {
       return getErrorRedirect(
         '/dashboard/settings',
@@ -376,7 +359,7 @@ export async function updateEmail(formData: FormData) {
       );
     }
  
-    const supabase = createClient();
+    const supabase = await createClient();
     
     const callbackUrl = getURL(
       getStatusRedirect(
@@ -414,13 +397,12 @@ export async function updateEmail(formData: FormData) {
       'Please try again later.'
     );
   }
- }
+}
  
- export async function updateName(formData: FormData) {
+export async function updateName(formData: FormData) {
   try {
     const fullName = String(formData.get('fullName')).trim();
  
-    // Validate name is not empty
     if (!fullName) {
       return getErrorRedirect(
         '/dashboard/settings',
@@ -429,7 +411,7 @@ export async function updateEmail(formData: FormData) {
       );
     }
  
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error, data } = await supabase.auth.updateUser({
       data: { full_name: fullName }
     });
@@ -464,4 +446,4 @@ export async function updateEmail(formData: FormData) {
       'Please try again later.'
     );
   }
- }
+}
