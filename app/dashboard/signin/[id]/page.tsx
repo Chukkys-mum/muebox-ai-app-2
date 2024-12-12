@@ -62,7 +62,7 @@ export default async function SignIn({
 
   // Handle auth-based redirects
   if (user && viewProp !== 'update_password') {
-    return redirect('/dashboard/main');
+    return redirect('/dashboard/ai-chat');
   }
 
   if (!user && viewProp === 'update_password') {

@@ -104,14 +104,14 @@ export default function AdminNavbar(props) {
               <HiBolt className="h-5 w-5" />
             </div>
             <h5 className="text-2xl font-bold leading-5 text-foreground dark:text-white">
-              Horizon AI
+              Muebox Ai
             </h5>
           </div>
         </Link>
         <div className="flex items-center">
           <Link
             className="my-auto mr-[30px] hidden text-sm font-medium leading-[0px] text-foreground dark:text-white lg:block"
-            href="/dashboard/main"
+            href="/dashboard/ai-chat"
           >
             Dashboard
           </Link>
@@ -154,7 +154,7 @@ export default function AdminNavbar(props) {
               <DropdownMenuItem>
                 <Link
                   className="text-md my-auto mr-[30px] font-medium text-foreground dark:text-white"
-                  href="/dashboard/main"
+                  href="/dashboard/ai-chat"
                 >
                   Dashboard
                 </Link>

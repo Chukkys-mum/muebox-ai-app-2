@@ -51,7 +51,7 @@ const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
   }, [supabase]);
 
   const handleTeamSelect = (teamId: string) => {
-    router.push('/dashboard/main');
+    router.push('/dashboard/ai-chat');
     onClose();
   };
 

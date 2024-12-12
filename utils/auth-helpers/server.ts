@@ -168,7 +168,7 @@ export async function signInWithPassword(formData: FormData) {
       );
     } else if (data.user) {
       await cookieStore.set('preferredSignInView', 'password_signin', { path: '/' });
-      redirectPath = getStatusRedirect('/dashboard/main', 'Success!', 'You are now signed in.');
+      redirectPath = getStatusRedirect('/dashboard/ai-chat', 'Success!', 'You are now signed in.');
     } else {
       redirectPath = getErrorRedirect(
         '/dashboard/signin/password_signin',
@@ -281,7 +281,7 @@ export async function signUp(formData: FormData) {
     const { data: { session } } = await supabase.auth.getSession();
 
     return getStatusRedirect(
-      '/dashboard/main',
+      '/dashboard/ai-chat',
       'Success!', 
       session ? 'You are now signed in.' : 'Please check your email for confirmation.'
     );

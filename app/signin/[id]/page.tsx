@@ -44,7 +44,7 @@ export default async function SignIn({
   } = await supabase.auth.getUser();
 
   if (user && viewProp !== 'update_password') {
-    return redirect('/dashboard/main');
+    return redirect('/dashboard/ai-chat');
   } else if (!user && viewProp === 'update_password') {
     return redirect('/dashboard/signin');
   }

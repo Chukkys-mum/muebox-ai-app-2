@@ -400,6 +400,33 @@ input.defaultCheckbox {
 }
 
 /* ---------------------------------------------------------------------------- */
+/* Chat Styling */
+/* ---------------------------------------------------------------------------- */
+
+chat-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.work-pane {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 200px;
+  max-width: 600px;
+  resize: horizontal;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+/* ---------------------------------------------------------------------------- */
 /* Dropdowns Styling */
 /* ---------------------------------------------------------------------------- */
 

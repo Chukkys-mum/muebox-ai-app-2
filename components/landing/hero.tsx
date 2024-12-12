@@ -36,12 +36,12 @@ export default function Hero() {
               your business.
             </h5>
             <div className="mx-auto flex items-center justify-center">
-              <Link className="me-2 md:me-5" href="/dashboard/main">
+              <Link className="me-2 md:me-5" href="/dashboard/ai-chat">
                 <Button className="mb-6 flex items-center justify-center px-4 py-7 text-sm font-medium md:mb-0">
                   Explore the Dashboard
                 </Button>
               </Link>
-              <Link href="/dashboard/main">
+              <Link href="/dashboard/ai-chat">
                 <Button
                   variant="outline"
                   className="mb-6 flex items-center justify-center px-4 py-7 text-sm font-medium dark:text-white md:mb-0"

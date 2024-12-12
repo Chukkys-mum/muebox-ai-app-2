@@ -98,13 +98,13 @@ export default function FirstSection() {
           </Card>
         </div>
         <div className="mx-auto mt-20 flex flex-col items-center justify-center md:flex-row">
-          <Link className="mb-5 md:mb-0 md:me-5" href="/dashboard/main">
+          <Link className="mb-5 md:mb-0 md:me-5" href="/dashboard/ai-chat">
             <Button className="flex items-center justify-center px-4 py-6 text-sm font-medium md:mb-0">
               <HiBolt className="me-2 h-4 w-4" />
-              Get Horizon AI Boilerplate
+              Get started with Muebox Ai
             </Button>
           </Link>
-          <Link href="/dashboard/main">
+          <Link href="/dashboard/ai-chat">
             <Button
               variant="outline"
               className="mb-6 flex w-full items-center justify-center px-4 py-6 text-sm font-medium dark:text-white md:mb-0 md:w-[unset]"

@@ -282,12 +282,12 @@ export default function Chat() {
         <div className="flex-shrink-0 h-16 border-b border-gray-200 dark:border-gray-700 p-4">
           <h2 className="text-lg font-semibold">Current Chat</h2>
         </div>
-  
+
         {/* Messages Container - Scrollable */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-2xl mx-auto space-y-4 flex flex-col-reverse">
             {/* Reverse the messages array to show newest at bottom */}
-            {messages.slice().reverse().map((message, index) => (
+            {messages.slice().reverse().map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -331,79 +331,83 @@ export default function Chat() {
             ))}
           </div>
         </div>
-  
+
         {/* Input Area - Fixed at bottom */}
-        <div className="flex-shrink-0 border-t bg-white dark:bg-zinc-800 p-4">
+        <div className="flex-shrink-0 border-t bg-white dark:bg-zinc-800 p-2">
           <div className="max-w-2xl mx-auto">
-            <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
+            <form onSubmit={handleSendMessage} className="flex flex-col space-y-1">
               <div className="relative w-full">
                 <Input
                   ref={inputRef}
-                  className="pr-20 w-full"
+                  className="pr-16 w-full h-8 text-xs" 
                   placeholder="Type your message here..."
                   value={input}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                 />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex space-x-0.5">
                   <Button type="button" onClick={startListening} disabled={isListening} size="icon" variant="ghost">
-                    <HiMicrophone className="h-4 w-4" />
+                    <HiMicrophone className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                   <Button type="submit" disabled={isLoading} size="icon" variant="ghost">
-                    <HiPaperAirplane className="h-4 w-4" />
+                    <HiPaperAirplane className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <div className="flex space-x-1">
+                <div className="flex space-x-0.5">
                   <Button type="button" size="icon" variant="ghost">
-                    <HiPaperClip className="h-4 w-4" />
+                    <HiPaperClip className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                   <Button type="button" size="icon" variant="ghost">
-                    <HiFaceSmile className="h-4 w-4" />
+                    <HiFaceSmile className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                   <Button type="button" size="icon" variant="ghost">
-                    <HiCodeBracket className="h-4 w-4" />
+                    <HiCodeBracket className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                   <Button type="button" size="icon" variant="ghost">
-                    <HiMiniPencilSquare className="h-4 w-4" />
+                    <HiMiniPencilSquare className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  AI may produce inaccurate information
+              </div>
+              <div className="flex justify-center">
+                <p className="text-[8px] text-zinc-500 dark:text-zinc-400 mt-1 text-center">
+                  AI may produce inaccurate information {/* Reduced font size */}
                 </p>
               </div>
             </form>
           </div>
         </div>
+
+
+        {/* ChatScopePanel */}
+        <div className="fixed right-0 top-[100px] z-50">
+          <Button
+            onClick={() => setIsChatScopePanelOpen(!isChatScopePanelOpen)}
+            className={`h-32 w-8 rounded-l-md bg-[#F8F8F8] text-black hover:bg-[#F0F0F0] transition-all duration-300 ${
+              isChatScopePanelOpen ? 'translate-x-[400px]' : ''
+            }`}
+            style={{ 
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed'
+            }}
+          >
+            Chat Scope
+          </Button>
+        </div>
+
+        {/* Ensure JSX block is closed properly */}
+        {isChatScopePanelOpen && (
+          <ChatScopePanel 
+            isOpen={isChatScopePanelOpen} 
+            onClose={() => setIsChatScopePanelOpen(false)}
+            chatScope={chatScopeState}
+            onChatScopeChange={handleChatScopeChange}
+            availableKnowledgeBases={availableKnowledgeBases}
+            availableFolders={availableFolders}
+          />
+        )}
       </div>
-  
-      {/* ChatScopePanel */}
-      <div className="fixed right-0 top-[100px] z-50">
-        <Button
-          onClick={() => setIsChatScopePanelOpen(!isChatScopePanelOpen)}
-          className={`h-32 w-8 rounded-l-md bg-[#F8F8F8] text-black hover:bg-[#F0F0F0] transition-all duration-300 ${
-            isChatScopePanelOpen ? 'translate-x-[400px]' : ''
-          }`}
-          style={{ 
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed'
-          }}
-        >
-          Chat Scope
-        </Button>
-      </div>
-      
-      {isChatScopePanelOpen && (
-        <ChatScopePanel 
-          isOpen={isChatScopePanelOpen} 
-          onClose={() => setIsChatScopePanelOpen(false)}
-          chatScope={chatScopeState}
-          onChatScopeChange={handleChatScopeChange}
-          availableKnowledgeBases={availableKnowledgeBases}
-          availableFolders={availableFolders}
-        />
-      )}
     </div>
   );
 }
