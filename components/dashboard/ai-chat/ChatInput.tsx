@@ -1,5 +1,7 @@
 // /components/dashboard/ai-chat/ChatInput.tsx
 
+// /components/dashboard/ai-chat/ChatInput.tsx
+
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
@@ -16,100 +18,89 @@ import {
 const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
 
 const ChatInput = () => {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(""); // Manage input state
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Custom Toolbar Configuration
-  const toolbarOptions = [
-    ["bold", "italic", "underline"], // Basic formatting options
-    [{ list: "ordered" }, { list: "bullet" }], // Lists
-    [{ align: [] }], // Alignment options
-    ["link"], // Hyperlinks
-    [{ color: [] }, { background: [] }], // Text and background color
-    ["clean"], // Remove formatting
-  ];
+  const handleSendMessage = () => {
+    if (!input.trim()) return;
+    setIsLoading(true);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim()) {
+    // Simulate sending the message
+    setTimeout(() => {
       console.log("Message sent:", input);
       setInput(""); // Clear input after sending
-    }
+      setIsLoading(false);
+    }, 500);
   };
 
   return (
-    <div className="flex-shrink-0 border-t bg-white dark:bg-zinc-800 p-2">
-      <div className="max-w-2xl mx-auto">
-        <form onSubmit={handleSendMessage} className="flex flex-col space-y-2">
-          <div className="relative w-full">
-            {/* Rich Text Editor */}
-            <ReactQuill
-              value={input}
-              onChange={setInput}
-              placeholder="Type your message here..."
-              className="bg-white dark:bg-zinc-700 dark:text-white border rounded-md"
-              theme="snow"
-              modules={{
-                toolbar: toolbarOptions,
-              }}
-            />
+    <div className="relative w-full p-2 border-t bg-white dark:bg-zinc-800">
+      <div className="max-w-2xl mx-auto flex flex-col space-y-2">
+        {/* Rich Text Editor */}
+        <ReactQuill
+          value={input}
+          onChange={(value) => setInput(value)}
+          placeholder="Type your message here..."
+          className="rounded-md border dark:bg-zinc-800"
+        />
 
-            {/* Mic and Send Buttons */}
-            <div className="absolute right-2 bottom-2 flex items-center space-x-2">
-              {/* Mic Button */}
-              <button
-                type="button"
-                onClick={() => console.log("Listening...")}
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-              >
-                <HiMicrophone className="h-5 w-5 text-gray-500" />
-              </button>
-              {/* Send Button */}
-              <button
-                type="submit"
-                className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <HiPaperAirplane className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+        {/* Mic and Send Buttons */}
+        <div className="absolute right-2 bottom-2 flex items-center space-x-2">
+          {/* Mic Button */}
+          <button
+            type="button"
+            onClick={() => console.log("Listening...")}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+          >
+            <HiMicrophone className="h-5 w-5 text-gray-500" />
+          </button>
+          {/* Send Button */}
+          <button
+            type="button"
+            onClick={handleSendMessage}
+            className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+            disabled={isLoading}
+          >
+            <HiPaperAirplane className="h-5 w-5" />
+          </button>
+        </div>
 
-          {/* Icon Bar Below Input */}
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-              >
-                <HiPaperClip className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-              >
-                <HiFaceSmile className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-              >
-                <HiCodeBracket className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-              >
-                <HiMiniPencilSquare className="h-5 w-5" />
-              </button>
-            </div>
+        {/* Icons below the editor */}
+        <div className="flex justify-between items-center">
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white"
+              title="Attach File"
+            >
+              <HiPaperClip className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white"
+              title="Insert Emoji"
+            >
+              <HiFaceSmile className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white"
+              title="Insert Code Block"
+            >
+              <HiCodeBracket className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white"
+              title="Draw"
+            >
+              <HiMiniPencilSquare className="h-5 w-5" />
+            </button>
           </div>
-
-          {/* AI Disclaimer */}
-          <div className="flex justify-center">
-            <p className="text-[8px] text-zinc-500 dark:text-zinc-400 mt-1 text-center">
-              AI may produce inaccurate information
-            </p>
-          </div>
-        </form>
+        </div>
+        <div className="text-center text-xs text-gray-500 dark:text-zinc-400">
+          AI may produce inaccurate information
+        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { KnowledgeBaseService } from '@/services/files/KnowledgeBaseService';
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 

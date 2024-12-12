@@ -24,9 +24,9 @@ const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
 
   useEffect(() => {
     const fetchTeams = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await (await supabase).auth.getUser();
       if (user?.id) {
-        const { data: teamsData } = await supabase
+        const { data: teamsData } = await (await supabase)
           .from('teams')
           .select(`
             team_id,

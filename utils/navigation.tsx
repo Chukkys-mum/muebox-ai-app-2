@@ -1,5 +1,7 @@
+// utils/navigation.tsx
+
 import { IRoute } from '@/types';
-// NextJS Requirement
+
 export const isWindowAvailable = () => typeof window !== 'undefined';
 
 export const findCurrentRoute = (
@@ -19,7 +21,15 @@ export const findCurrentRoute = (
 
 export const getActiveRoute = (routes: IRoute[], pathname: string): string => {
   const route = findCurrentRoute(routes, pathname);
-  return route?.name || 'Default Brand Text';
+  if (!route) return '';
+  
+  // If this is a nested route, find its parent
+  if (route.parentPath) {
+    const parent = routes.find(r => r.path === route.parentPath);
+    return parent ? `${parent.name} / ${route.name}` : route.name;
+  }
+  
+  return route.name;
 };
 
 export const getActiveNavbar = (

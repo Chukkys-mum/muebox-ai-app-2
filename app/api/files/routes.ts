@@ -4,10 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { FileService } from '@/services/files/FileService';
+import { Database } from '@/types/types_db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient<Database>({ 
+      cookies: () => cookieStore 
+    });
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -15,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     const fileService = new FileService();
-    const files = await fileService.fetchFiles(user.id); // Assuming we want to fetch files for the authenticated user
+    const files = await fileService.fetchFiles(user.id);
 
     return NextResponse.json(files, {
       headers: {

@@ -1,3 +1,5 @@
+// /components/navbar/NavbarFixed.tsx
+
 /* eslint-disable */
 'use client';
 

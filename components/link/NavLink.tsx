@@ -1,3 +1,5 @@
+// /components/link/NavLink.tsx
+
 'use client';
 
 import NextLink, { LinkProps as NextLinkProps } from 'next/link';

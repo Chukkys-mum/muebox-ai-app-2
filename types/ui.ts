@@ -19,6 +19,7 @@ export interface IRoute {
   component?: ComponentType;
   icon?: IconType;  // Changed from JSX.Element to IconType
   secondary?: boolean;
+  parentPath?: string; 
   collapse?: boolean;
   items?: IRoute[];
   rightElement?: boolean;
