@@ -59,20 +59,30 @@ const DashboardLayout: React.FC<Props> = (props: Props) => {
           <PlanProvider initialValue={plan}>
             <ProductsProvider value={props.products}>
               <SubscriptionProvider value={props.subscription}>
-                <div className="dark:bg-background-900 flex h-full w-full bg-white">
-                  <Sidebar routes={routes} />
-                  <div className="h-full w-full dark:bg-zinc-950">
-                    <main
-                      className={`mx-2.5 flex-none transition-all dark:bg-zinc-950 md:pr-2 xl:ml-[328px]`}
-                    >
-                      <div className="mx-auto min-h-screen p-2 !pt-[90px] md:p-2 md:!pt-[118px]">
+                <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-background-900">
+                  {/* Fixed sidebar */}
+                  <div className="fixed left-0 top-0 h-full w-[328px] border-r border-gray-200 dark:border-zinc-800">
+                    <Sidebar routes={routes} />
+                  </div>
+                  
+                  {/* Main content area */}
+                  <div className="flex flex-1 flex-col pl-[328px]">
+                    {/* Fixed navbar at top */}
+                    <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-xl dark:bg-zinc-950/80">
+                      <Navbar brandText={getActiveRoute(routes, pathname)} />
+                    </div>
+                    
+                    {/* Scrollable content */}
+                    <main className="flex-1 overflow-auto px-2.5 pt-[90px] transition-all md:px-2 md:pt-[118px]">
+                      <div className="mx-auto">
                         {props.children}
                       </div>
-                      <Navbar brandText={getActiveRoute(routes, pathname)} />
-                      <div className="p-3">
-                        <Footer />
-                      </div>
                     </main>
+                    
+                    {/* Footer */}
+                    <div className="p-3">
+                      <Footer />
+                    </div>
                   </div>
                 </div>
               </SubscriptionProvider>

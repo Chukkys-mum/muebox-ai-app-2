@@ -12,6 +12,8 @@ import {
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
 
+// app/signin/[id]/page.tsx
+
 export default async function SignIn({
   params,
   searchParams
@@ -23,10 +25,8 @@ export default async function SignIn({
   const viewTypes = getViewTypes();
   const redirectMethod = getRedirectMethod();
 
-  // Declare 'viewProp' and initialize with the default value
   let viewProp: string;
 
-  // Assign url id to 'viewProp' if it's a valid string and ViewTypes includes it
   if (typeof params.id === 'string' && viewTypes.includes(params.id)) {
     viewProp = params.id;
   } else {
@@ -36,15 +36,12 @@ export default async function SignIn({
     return redirect(`/dashboard/signin/${viewProp}`);
   }
 
-  // Check if the user is already logged in and redirect to the account page if so
-  const supabase = createClient();
-
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  // Get Supabase client and properly await it
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
   if (user && viewProp !== 'update_password') {
-    return redirect('/dashboard/ai-chat');
+    return redirect('/dashboard/main');
   } else if (!user && viewProp === 'update_password') {
     return redirect('/dashboard/signin');
   }

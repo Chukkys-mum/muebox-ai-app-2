@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Lock, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/app/supabase-provider';
-import { supabase } from '@/utils/supabase/client';
+
+import { createClient } from '@/utils/supabase/client';
 
 interface TeamSwitcherProps {
   onClose: () => void;
@@ -19,7 +20,7 @@ interface Team {
 const TeamSwitcher = ({ onClose }: TeamSwitcherProps) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const router = useRouter();
-  const { supabase } = useSupabase();
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     const fetchTeams = async () => {

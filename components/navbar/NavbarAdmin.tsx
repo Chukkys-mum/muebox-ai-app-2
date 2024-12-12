@@ -5,7 +5,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useOpen, useUser } from '@/context/layout';
 import { handleRequest } from '@/utils/auth-helpers/client';
@@ -16,11 +15,7 @@ import { cn } from '@/utils/cn';
 import NavLink from '@/components/link/NavLink';
 
 import { IoSearch } from 'react-icons/io5';
-import { 
-  HiOutlineSun, 
-  HiOutlineMoon,
-  HiOutlineArrowRightOnRectangle 
-} from 'react-icons/hi2';
+import { HiOutlineSun, HiOutlineMoon, HiOutlineArrowRightOnRectangle } from 'react-icons/hi2';
 
 // Components
 import { IconButton } from './shared/IconButton';
@@ -29,12 +24,12 @@ import ProfileDropdown from './ProfileDropdown';
 import NotificationDropdownMenu from '@/components/common/NotificationDropdownMenu';
 import { Input } from '@/components/ui/input';
 
+
 interface Props {
   brandText: string;
-  [x: string]: any;
 }
 
-const NavbarAdmin: React.FC<Props> = ({ brandText, ...props }) => {
+const NavbarAdmin = ({ brandText }: Props) => {
   const { open, setOpen } = useOpen();
   const user = useUser();
   const [mounted, setMounted] = useState(false);
@@ -55,8 +50,8 @@ const NavbarAdmin: React.FC<Props> = ({ brandText, ...props }) => {
 
   return (
     <nav className={cn(
-      'fixed right-3 top-3 z-[0] flex w-[calc(100vw_-_6%)] flex-row items-center justify-between rounded-md',
-      'bg-white/30 py-2 backdrop-blur-xl dark:bg-transparent',
+      'fixed right-3 top-3 z-50 flex w-[calc(100vw_-_6%)] flex-row items-center justify-between rounded-md',
+      'bg-white/30 py-2 backdrop-blur-xl dark:bg-zinc-900/30',
       'md:right-[30px] md:top-4 md:w-[calc(100vw_-_8%)] md:p-2',
       'lg:w-[calc(100vw_-_6%)] xl:top-[20px] xl:w-[calc(100vw_-_365px)]',
       scrolled && 'shadow-md'
@@ -90,6 +85,14 @@ const NavbarAdmin: React.FC<Props> = ({ brandText, ...props }) => {
         </p>
       </div>
 
+      <div className="ml-[6px] flex-1">
+        <div className="h-6 md:mb-2 md:w-[224px] md:pt-1">
+          <p className="text-md shrink capitalize text-foreground dark:text-white md:text-3xl">
+            {brandText}
+          </p>
+        </div>
+      </div>
+
       <div className="relative mx-auto w-1/3 hidden lg:flex">
         <Input
           type="search"
@@ -116,7 +119,7 @@ const NavbarAdmin: React.FC<Props> = ({ brandText, ...props }) => {
         />
 
         <form className="contents" onSubmit={(e) => handleRequest(e, SignOut, router)}>
-          <Input type="hidden" name="pathName" value={pathname} />
+          <input type="hidden" name="pathName" value={pathname} />
           <IconButton
             type="submit"
             ariaLabel="Sign out"

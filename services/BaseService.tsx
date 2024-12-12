@@ -1,6 +1,6 @@
 // services/BaseService.tsx
 
-import createClient from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import type { Database } from '@/types/supabase';
 import { 
   FileRow, 
@@ -14,7 +14,15 @@ import { getFileCategory } from "@/utils/FileUtils";
 import { PostgrestSingleResponse, SupabaseClient } from '@supabase/supabase-js';
 
 export class BaseService {
-    protected supabase: SupabaseClient = createClient();
+  protected supabasePromise;
+
+  constructor() {
+    this.supabasePromise = createClient();
+  }
+
+  protected async getClient() {
+    return await this.supabasePromise;
+  }
 
   protected async handleQuery<T>(
     query: Promise<{ data: T | null; error: any }>
@@ -83,7 +91,7 @@ export class BaseService {
     return {
       file_name: file.file_name!,
       size: typeof file.size === 'string' ? parseInt(file.size) : (file.size || 0),
-      type: file.type || 'file',
+      type: file.type === 'knowledge_base' ? 'file' : (file.type || 'file'),
       status: file.status || 'active',
       category: file.category || 'other',
       extension: file.extension || null,
@@ -156,8 +164,9 @@ export class BaseService {
     entityType: 'file' | 'folder',
     successMessage: string
   ): Promise<FileOperationResult> {
+    const supabase = await this.getClient();
     return this.genericFileOperation(
-      async () => await this.supabase
+      async () => await supabase
         .from("files")
         .update(this.transformToDatabase(updates))
         .eq("id", entityId)
@@ -170,7 +179,9 @@ export class BaseService {
 
   async getStorageUsage(): Promise<FileStorageUsage> {
     try {
-      const { data, error } = await this.supabase.rpc('get_storage_usage') as PostgrestSingleResponse<{
+      const supabase = await this.getClient();
+      // Use a different RPC function name that exists in your schema
+      const { data, error } = await supabase.rpc('get_archive_storage_usage') as PostgrestSingleResponse<{
         used_space: number;
         total_space: number;
         storage_breakdown: Record<string, number>;
@@ -231,7 +242,8 @@ export class BaseService {
   }
   
   async getEntityDownloadLink(entityId: string, entityType: 'file' | 'folder'): Promise<string> {
-    const { data } = await this.supabase
+    const supabase = await this.getClient();
+    const { data } = await supabase
       .from("files")
       .select("file_path")
       .eq("id", entityId)
