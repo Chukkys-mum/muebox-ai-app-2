@@ -1,6 +1,7 @@
 // /components/routes.tsx
 
-import { IRoute } from '@/types';
+// Import necessary types and icons
+import { IRoute } from '@/types'; // Ensure your type definition is correct and includes "icon" as JSX.Element
 import {
   HiOutlineCog8Tooth,
   HiOutlineCpuChip,
@@ -17,17 +18,18 @@ import {
   HiOutlineEnvelope
 } from 'react-icons/hi2';
 
+// Define the route configurations
 export const routes: IRoute[] = [
   {
     name: 'Main Dashboard',
     path: '/dashboard/main',
-    icon: HiOutlineHome,  // Pass the component directly, not a JSX element
+    icon: <HiOutlineHome />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'AI Pages',
     path: '/ai-pages',
-    icon: HiOutlineCpuChip,
+    icon: <HiOutlineCpuChip />, // Wrapped in JSX
     collapse: true,
     items: [
       {
@@ -73,25 +75,25 @@ export const routes: IRoute[] = [
   {
     name: 'Templates',
     path: '/dashboard/template',
-    icon: HiOutlineDocument,
+    icon: <HiOutlineDocument />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'Files',
     path: '/dashboard/files',
-    icon: HiOutlineFolder,
+    icon: <HiOutlineFolder />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'Knowledge Base',
     path: '/dashboard/knowledge-base',
-    icon: HiOutlineBookOpen,
+    icon: <HiOutlineBookOpen />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'Email',
     path: '/dashboard/email',
-    icon: HiOutlineEnvelope,
+    icon: <HiOutlineEnvelope />, // Wrapped in JSX
     collapse: true,
     items: [
       {
@@ -114,7 +116,7 @@ export const routes: IRoute[] = [
   {
     name: 'Time Machine',
     path: '/dashboard/time-machine',
-    icon: HiOutlineArchiveBox,
+    icon: <HiOutlineArchiveBox />, // Wrapped in JSX
     collapse: true,
     items: [
       {
@@ -132,13 +134,13 @@ export const routes: IRoute[] = [
   {
     name: 'Users List',
     path: '/dashboard/users-list',
-    icon: HiOutlineUsers,
+    icon: <HiOutlineUsers />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'Profile Settings',
     path: '/dashboard/settings',
-    icon: HiOutlineCog8Tooth,
+    icon: <HiOutlineCog8Tooth />, // Wrapped in JSX
     collapse: true,
     items: [
       {
@@ -156,19 +158,23 @@ export const routes: IRoute[] = [
   {
     name: 'Subscription',
     path: '/dashboard/subscription',
-    icon: HiOutlineCreditCard,
+    icon: <HiOutlineCreditCard />, // Wrapped in JSX
     collapse: false
   },
   {
     name: 'Landing Page',
     path: '/home',
-    icon: HiOutlineDocumentText,
-    collapse: false
+    icon: <HiOutlineDocumentText />, // Wrapped in JSX
+    collapse: false,
+    isPublic: true // Flag for public route
   },
   {
     name: 'Pricing Page',
     path: '/pricing',
-    icon: HiOutlineCurrencyDollar,
+    icon: <HiOutlineCurrencyDollar />, // Wrapped in JSX
     collapse: false
   }
 ];
+
+// Filter private routes (excluding public routes)
+const privateRoutes = routes.filter(route => !route.isPublic);

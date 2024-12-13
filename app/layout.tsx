@@ -4,9 +4,13 @@ import { Suspense } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import SupabaseProvider from './supabase-provider';
 import { ThemeProvider } from './theme-provider';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from '@/components/ui/toaster';
 import Loading from './loading';
 import '@/styles/globals.css';
+import Sidebar from '@/components/sidebar/Sidebar';
+import NavbarAdmin from '@/components/navbar/NavbarAdmin';
+import { routes } from '@/components/routes'; // Import your route definitions
+import { getActiveRoute } from '@/utils/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +40,31 @@ async function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Inner layout for shared theming and suspense fallback
-function RootLayoutInner({ children }: { children: React.ReactNode }) {
+function RootLayoutInner({
+  children,
+  isPublic,
+}: {
+  children: React.ReactNode;
+  isPublic: boolean;
+}) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <Suspense fallback={<Loading />}>
-        {children}
+        {!isPublic ? (
+          <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-950">
+            <div className="fixed left-0 top-0 h-full w-[280px] border-r border-gray-200 dark:border-zinc-800">
+              <Sidebar routes={routes} />
+            </div>
+            <div className="flex flex-1 flex-col pl-[280px]">
+              <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-xl dark:bg-zinc-950/80">
+                <NavbarAdmin brandText="Dashboard" />
+              </div>
+              <main className="flex-1 overflow-auto px-2.5 pt-[90px]">{children}</main>
+            </div>
+          </div>
+        ) : (
+          <main className="min-h-screen bg-gray-100 dark:bg-zinc-950">{children}</main>
+        )}
       </Suspense>
       <Toaster />
     </ThemeProvider>
@@ -48,37 +72,31 @@ function RootLayoutInner({ children }: { children: React.ReactNode }) {
 }
 
 // Main root layout
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const publicRoutes = [
+    '/EmailSignIn',
+    '/Signup',
+    '/ForgotPassword',
+    '/UpdatePassword',
+    '/PasswordSignin',
+    '/OauthSignIn',
+  ];
+  const pathname = '/'; // Placeholder for server-side path checking
+  const isPublic = publicRoutes.includes(pathname);
+
   return (
     <html lang="en">
       <head>
         <title>Muebox AI - Personalising AI for People and Organisations</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="keywords" content="Add here your main keywords and separate them with a comma" />
-        <meta name="description" content="Add here your website description" />
-        <meta itemProp="name" content="Add here your website name / title" />
-        <meta itemProp="description" content="Add here your website description" />
-        <meta itemProp="image" content="Add here the link for your website SEO image" />
-        <meta name="twitter:card" content="product" />
-        <meta name="twitter:title" content="Add here your website name / title" />
-        <meta name="twitter:description" content="Add here your website description" />
-        <meta name="twitter:image" content="Add here the link for your website SEO image" />
-        <meta property="og:title" content="Add here your website name / title" />
-        <meta property="og:type" content="product" />
-        <meta property="og:url" content="https://your-website.com" />
-        <meta property="og:image" content="Add here the link for your website SEO image" />
-        <meta property="og:description" content="Add here your website description" />
-        <meta property="og:site_name" content="Add here your website name / title" />
-        <link rel="canonical" href="https://your-website.com" />
         <link rel="icon" href="/img/favicon.ico" />
       </head>
       <body className="loading bg-white">
         <AuthProvider>
-          <RootLayoutInner>
-            <main id="skip">{children}</main>
-          </RootLayoutInner>
+          <RootLayoutInner isPublic={isPublic}>{children}</RootLayoutInner>
         </AuthProvider>
       </body>
     </html>
   );
 }
+

@@ -12,6 +12,9 @@ import {
 } from "@/types";
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import { logger } from '@/utils/logger';
+import { Database } from '@/types/types_db';
+
+type DatabaseFile = Database['public']['Tables']['files']['Row'];
 
 // Custom error class for FileService
 export class FileServiceError extends Error {
@@ -22,13 +25,45 @@ export class FileServiceError extends Error {
 }
 
 export class FileService extends BaseService {
+  protected transformDatabaseFile(file: DatabaseFile): FileRow {
+    return {
+      id: file.id,
+      file_name: file.file_name,
+      size: typeof file.size === 'string' ? parseInt(file.size) : (file.size || 0),
+      type: file.type || 'file',
+      status: file.status as FileStatus,
+      category: file.category as FileCategory || null,
+      extension: file.extension || null,
+      mime_type: file.mime_type || null,
+      parent_id: file.parent_id || null,
+      uploaded_by: file.uploaded_by,
+      is_pinned: file.is_pinned || false,
+      starred: file.starred || false,
+      tags: file.tags || [],
+      description: file.description || '',
+      created_at: file.created_at || new Date().toISOString(),
+      updated_at: file.updated_at || new Date().toISOString(),
+      deleted_at: file.deleted_at || null,
+      archived_at: file.archived_at || null,
+      is_shared: file.is_shared || false,
+      shared_with: file.shared_with || [],
+      permissions: file.permissions || null,
+      user_id: file.user_id || '',
+      metadata: file.metadata || null,
+      related_entity_type: file.related_entity_type || null,
+      related_entity_id: file.related_entity_id || null,
+      file_path: file.file_path || null
+    };
+  }
+
   async fetchFiles(userId: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('status', 'active')
-        .eq('user_id', userId); // Add this filter
+        .eq('user_id', userId);
 
       if (error) throw error;
       return (data?.map(file => this.transformDatabaseFile(file)) || []);
@@ -36,11 +71,12 @@ export class FileService extends BaseService {
       logger.error('Failed to fetch files', { error: err });
       return [];
     }
-}
+  }
 
   async getAvailableFolders(userId: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('type', 'folder')
@@ -57,30 +93,31 @@ export class FileService extends BaseService {
 
   async fetchFolders(userId: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('type', 'folder')
         .eq('status', 'active')
-        .eq('user_id', userId); // Add this filter
-
+        .eq('user_id', userId);
+  
       if (error) throw error;
-      return data?.map(folder => this.transformDatabaseFile(folder)) || [];
+      return data?.map(file => this.transformDatabaseFile(file)) || [];
     } catch (err) {
       logger.error('Failed to fetch folders', { error: err });
       return [];
     }
-}
+  }
 
   async getFileSettings(): Promise<FileSettings | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("file_settings")
         .select("*")
         .single();
   
       if (error) throw error;
-  
       if (!data) return null;
   
       return {
@@ -97,10 +134,11 @@ export class FileService extends BaseService {
 
   async getArchivedFiles(page: number = 1, limit: number = 10): Promise<{ files: FileRow[], total: number }> {
     try {
+      const supabase = await this.getClient();
       const start = (page - 1) * limit;
       const end = start + limit - 1;
   
-      const { data, error, count } = await this.supabase
+      const { data, error, count } = await supabase
         .from('files')
         .select('*', { count: 'exact' })
         .eq('status', 'archived')
@@ -121,7 +159,8 @@ export class FileService extends BaseService {
   
   async getArchivedStorageUsage(): Promise<FileStorageUsage> {
     try {
-      const { data, error } = await this.supabase.rpc('get_archived_storage_usage') as PostgrestSingleResponse<{
+      const supabase = await this.getClient();
+      const { data, error } = await supabase.rpc('get_archived_storage_usage') as PostgrestSingleResponse<{
         used_space: number;
         total_space: number;
         storage_breakdown: Record<string, number>;
@@ -141,8 +180,9 @@ export class FileService extends BaseService {
   }
   
   async restoreFromArchive(fileId: string): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .update({ 
           status: 'active' as FileStatus,
@@ -150,9 +190,22 @@ export class FileService extends BaseService {
         })
         .eq("id", fileId)
         .select()
-        .single(),
-      'File restored successfully'
-    );
+        .single();
+  
+      if (error) throw error;
+  
+      return {
+        success: true,
+        message: 'File restored successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
+    } catch (err) {
+      console.error('restoreFromArchive:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to restore file'
+      };
+    }
   }
 
   async updateFileSettings(settings: Partial<FileSettings>): Promise<boolean> {
@@ -175,19 +228,20 @@ export class FileService extends BaseService {
   }
 
   async searchFiles(query: string): Promise<FileRow[]> {
-    try {
-      const { data, error } = await this.supabase
-        .from("files")
-        .select("*")
-        .ilike("file_name", `%${query}%`);
+  try {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("files")
+      .select("*")
+      .ilike("file_name", `%${query}%`);
 
-      if (error) throw error;
-      return (data?.map(file => this.transformDatabaseFile(file)) || []);
-    } catch (err) {
-      console.error('searchFiles:', err);
-      return [];
-    }
+    if (error) throw error;
+    return data?.map(file => this.transformDatabaseFile(file)) || [];
+  } catch (err) {
+    console.error('searchFiles:', err);
+    return [];
   }
+}
 
   async deleteFile(fileId: string): Promise<FileOperationResult> {
     return this.genericFileOperation(
@@ -205,27 +259,54 @@ export class FileService extends BaseService {
   }
 
   async uploadFile(file: Partial<FileRow>): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .insert([this.transformToDatabase(file)])
         .select()
-        .single(),
-      'File uploaded successfully'
-    );
+        .single();
+  
+      if (error) throw error;
+  
+      return {
+        success: true,
+        message: 'File uploaded successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
+    } catch (err) {
+      console.error('uploadFile:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to upload file'
+      };
+    }
   }
 
   async updateFile(fileId: string, updates: Partial<FileRow>): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .update(this.transformToDatabase(updates))
         .eq("id", fileId)
         .select()
-        .single(),
-      'File updated successfully'
-    );
-  }
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: 'File updated successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
+    } catch (err) {
+      console.error("updateFile:", err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to update file'
+      };
+    }
 
   static async getFilesByFolder(folderId: string): Promise<FileRow[]> {
     const service = new FileService();
@@ -234,14 +315,15 @@ export class FileService extends BaseService {
 
   async getFilesByFolder(folderId: string): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .select("*")
         .eq("parent_id", folderId)
         .eq("status", "active");
-
+  
       if (error) throw error;
-      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+      return data?.map(file => this.transformDatabaseFile(file)) || [];
     } catch (err) {
       console.error('getFilesByFolder:', err);
       return [];
@@ -250,35 +332,37 @@ export class FileService extends BaseService {
 
   async getFilesByCategory(category: FileCategory): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .select("*")
         .eq("category", category)
         .eq("status", "active");
-
+  
       if (error) throw error;
-      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+      return data?.map(file => this.transformDatabaseFile(file)) || [];
     } catch (err) {
       console.error('getFilesByCategory:', err);
       return [];
     }
-  }
+  }  
 
   static async getFilesAndFolders(): Promise<FileRow[]> {
     const service = new FileService();
-    return service.getFilesAndFolders();
+    return await service.getFilesAndFolders();
   }
 
   async getFilesAndFolders(): Promise<FileRow[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .select("*")
         .is("parent_id", null)
         .eq("status", "active");
-
+  
       if (error) throw error;
-      return (data?.map(file => this.transformDatabaseFile(file)) || []);
+      return data?.map(file => this.transformDatabaseFile(file)) || [];
     } catch (err) {
       console.error('getFilesAndFolders:', err);
       return [];
@@ -286,15 +370,29 @@ export class FileService extends BaseService {
   }
 
   async moveFile(fileId: string, newParentId: string | null): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .update({ parent_id: newParentId })
         .eq("id", fileId)
         .select()
-        .single(),
-      'File moved successfully'
-    );
+        .single();
+  
+      if (error) throw error;
+  
+      return {
+        success: true,
+        message: 'File moved successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
+    } catch (err) {
+      console.error('moveFile:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to move file'
+      };
+    }
   }
 
   async updateSharing(
@@ -302,8 +400,9 @@ export class FileService extends BaseService {
     isShared: boolean, 
     sharedWith?: string[] | null
   ): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from("files")
         .update({ 
           is_shared: isShared,
@@ -311,14 +410,28 @@ export class FileService extends BaseService {
         })
         .eq("id", fileId)
         .select()
-        .single(),
-      'Sharing settings updated successfully'
-    );
+        .single();
+  
+      if (error) throw error;
+  
+      return {
+        success: true,
+        message: 'Sharing settings updated successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
+    } catch (err) {
+      console.error('updateSharing:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to update sharing settings'
+      };
+    }
   }
-
+  
   async getStorageUsage(): Promise<FileStorageUsage> {
     try {
-      const { data, error } = await this.supabase.rpc('get_storage_usage') as PostgrestSingleResponse<{
+      const supabase = await this.getClient();
+      const { data, error } = await supabase.rpc('get_archive_storage_usage') as PostgrestSingleResponse<{
         used_space: number;
         total_space: number;
         storage_breakdown: Record<string, number>;
@@ -341,16 +454,18 @@ export class FileService extends BaseService {
 
   async copyFile(fileId: string, destinationFolderId: string | null): Promise<FileOperationResult> {
     try {
+      const supabase = await this.getClient();
+      
       // First, get the original file
-      const { data: originalFile, error: fetchError } = await this.supabase
+      const { data: originalFile, error: fetchError } = await supabase
         .from("files")
         .select("*")
         .eq("id", fileId)
         .single();
-
+  
       if (fetchError) throw fetchError;
       if (!originalFile) throw new Error('Original file not found');
-
+  
       // Create a copy of the file with new destination
       const newFile = {
         ...originalFile,
@@ -360,30 +475,35 @@ export class FileService extends BaseService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-
+  
       // If it's a file (not a folder), handle file content copying
       if (originalFile.type === 'file' && originalFile.file_path) {
         const newPath = `${destinationFolderId || 'root'}/${newFile.file_name}`;
         
         // Copy the actual file in storage
-        const { error: storageError } = await this.supabase
+        const { error: storageError } = await supabase
           .storage
           .from('files')
           .copy(originalFile.file_path, newPath);
-
+  
         if (storageError) throw storageError;
         newFile.file_path = newPath;
       }
-
+  
       // Insert the new file record
-      return this.genericFileOperation(
-        async () => await this.supabase
-          .from("files")
-          .insert([newFile])
-          .select()
-          .single(),
-        'File copied successfully'
-      );
+      const { data, error } = await supabase
+        .from("files")
+        .insert([newFile])
+        .select()
+        .single();
+  
+      if (error) throw error;
+  
+      return {
+        success: true,
+        message: 'File copied successfully',
+        file: data ? this.transformDatabaseFile(data) : undefined
+      };
     } catch (err) {
       console.error('copyFile:', err);
       return {
@@ -393,107 +513,133 @@ export class FileService extends BaseService {
     }
   }
 
-  async editFile(fileId: string, updates: {
+  async editFile(
+  fileId: string, 
+  updates: {
     content?: string;
     metadata?: Record<string, any>;
-  }): Promise<FileOperationResult> {
-    try {
-      // Get the current file first
-      const { data: currentFile, error: fetchError } = await this.supabase
-        .from("files")
-        .select("*")
-        .eq("id", fileId)
-        .single();
+  }
+): Promise<FileOperationResult> {
+  try {
+    const supabase = await this.getClient();
+    
+    // Get the current file first
+    const { data: currentFile, error: fetchError } = await supabase
+      .from("files")
+      .select("*")
+      .eq("id", fileId)
+      .single();
 
-      if (fetchError) throw fetchError;
-      if (!currentFile) throw new Error('File not found');
+    if (fetchError) throw fetchError;
+    if (!currentFile) throw new Error('File not found');
 
-      // Prepare updates
-      const fileUpdates: Partial<FileRow> = {
-        updated_at: new Date().toISOString(),
-        metadata: {
-          ...currentFile.metadata,
-          ...updates.metadata,
-          last_edited: new Date().toISOString()
-        }
-      };
-
-      // If content is being updated and there's a file path
-      if (updates.content && currentFile.file_path) {
-        // Update the file content in storage
-        const { error: storageError } = await this.supabase
-          .storage
-          .from('files')
-          .update(
-            currentFile.file_path,
-            new Blob([updates.content], { type: currentFile.mime_type || 'text/plain' }),
-            {
-              cacheControl: '3600',
-              upsert: true
-            }
-          );
-
-        if (storageError) throw storageError;
+    // Prepare updates
+    const fileUpdates: Partial<FileRow> = {
+      updated_at: new Date().toISOString(),
+      metadata: {
+        ...currentFile.metadata,
+        ...updates.metadata,
+        last_edited: new Date().toISOString()
       }
+    };
 
-      // Update the file record
-      return this.genericFileOperation(
-        async () => await this.supabase
-          .from("files")
-          .update(this.transformToDatabase(fileUpdates))
-          .eq("id", fileId)
-          .select()
-          .single(),
-        'File updated successfully'
-      );
-    } catch (err) {
-      console.error('editFile:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Failed to edit file'
-      };
-    }
-  }
-
-  async createCopy(fileId: string, newName?: string): Promise<FileOperationResult> {
-    try {
-      // Get the original file
-      const { data: originalFile, error: fetchError } = await this.supabase
-        .from("files")
-        .select("*")
-        .eq("id", fileId)
-        .single();
-
-      if (fetchError) throw fetchError;
-      if (!originalFile) throw new Error('Original file not found');
-
-      // Create a copy in the same folder
-      return await this.copyFile(fileId, originalFile.parent_id);
-    } catch (err) {
-      console.error('createCopy:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Failed to create copy'
-      };
-    }
-  }
-
-  async saveToDraft(fileId: string): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
-        .from("files")
-        .update({ 
-          status: 'draft' as FileStatus,
-          metadata: {
-            draft_saved_at: new Date().toISOString()
+    // If content is being updated and there's a file path
+    if (updates.content && currentFile.file_path) {
+      // Update the file content in storage
+      const { error: storageError } = await supabase
+        .storage
+        .from('files')
+        .update(
+          currentFile.file_path,
+          new Blob([updates.content], { type: currentFile.mime_type || 'text/plain' }),
+          {
+            cacheControl: '3600',
+            upsert: true
           }
-        })
-        .eq("id", fileId)
-        .select()
-        .single(),
-      'File saved to drafts'
-    );
+        );
+
+      if (storageError) throw storageError;
+    }
+
+    // Update the file record
+    const { data, error } = await supabase
+      .from("files")
+      .update(this.transformToDatabase(fileUpdates))
+      .eq("id", fileId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: 'File updated successfully',
+      file: data ? this.transformDatabaseFile(data) : undefined
+    };
+  } catch (err) {
+    console.error('editFile:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to edit file'
+    };
   }
+}
+
+async createCopy(fileId: string, newName?: string): Promise<FileOperationResult> {
+  try {
+    const supabase = await this.getClient();
+    
+    // Get the original file
+    const { data: originalFile, error: fetchError } = await supabase
+      .from("files")
+      .select("*")
+      .eq("id", fileId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!originalFile) throw new Error('Original file not found');
+
+    // Create a copy in the same folder
+    return await this.copyFile(fileId, originalFile.parent_id);
+  } catch (err) {
+    console.error('createCopy:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to create copy'
+    };
+  }
+}
+
+async saveToDraft(fileId: string): Promise<FileOperationResult> {
+  try {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("files")
+      .update({ 
+        status: 'draft' as FileStatus,
+        metadata: {
+          draft_saved_at: new Date().toISOString()
+        }
+      })
+      .eq("id", fileId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: 'File saved to drafts',
+      file: data ? this.transformDatabaseFile(data) : undefined
+    };
+  } catch (err) {
+    console.error('saveToDraft:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to save file to drafts'
+    };
+  }
+}
 
   async getFileContent(fileId: string): Promise<string | null> {
     try {

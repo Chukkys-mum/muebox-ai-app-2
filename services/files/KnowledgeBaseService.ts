@@ -14,6 +14,7 @@ import { archiveService } from '../time-machine/ArchiveService';
 import { IArchiveService } from '../time-machine/types';
 import { cache } from 'react';
 
+
 export interface KnowledgeBaseFile extends FileRow {
   knowledgeBaseType: 'public' | 'private';
   safeguardRules?: SafeguardFolder['safeguardRules'];
@@ -91,9 +92,10 @@ export class KnowledgeBaseService extends FileService {
     };
   }
   
-  getKnowledgeBaseById = cache(async (id: string): Promise<KnowledgeBaseFile | null> => {
+  async getKnowledgeBaseById(id: string): Promise<KnowledgeBaseFile | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('id', id)
@@ -106,7 +108,7 @@ export class KnowledgeBaseService extends FileService {
       console.error('getKnowledgeBaseById:', err);
       return null;
     }
-  });
+  }
 
   getStorageUsage = cache(async (): Promise<FileStorageUsage> => {
     try {
@@ -130,7 +132,8 @@ export class KnowledgeBaseService extends FileService {
 
   async getAvailableKnowledgeBases(userId: string): Promise<KnowledgeBaseFile[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
         .from('files')
         .select('*')
         .eq('type', 'knowledge_base')
@@ -144,7 +147,7 @@ export class KnowledgeBaseService extends FileService {
       return [];
     }
   }
-
+  
   async createKnowledgeBase(knowledgeBase: KnowledgeBaseCreateInput): Promise<FileOperationResult> {
     const fileRowData: Partial<FileRow> = {
       file_name: knowledgeBase.file_name,

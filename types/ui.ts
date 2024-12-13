@@ -11,21 +11,23 @@ export interface PageMeta {
 }
 
 // Route interface
+
 export interface IRoute {
   path: string;
   name: string;
   layout?: string;
   exact?: boolean;
   component?: ComponentType;
-  icon?: IconType;  // Changed from JSX.Element to IconType
+  icon?: IconType | JSX.Element;  // Allow IconType or JSX.Element
   secondary?: boolean;
   parentPath?: string; 
   collapse?: boolean;
   items?: IRoute[];
   rightElement?: boolean;
   invisible?: boolean;
-  isPremium?: boolean;  // Add this
-  isSection?: boolean;  // Add this
+  isPremium?: boolean;  // Added earlier
+  isSection?: boolean;  // Added earlier
+  isPublic?: boolean; 
 }
 
 export interface ButtonProps {

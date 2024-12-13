@@ -1,12 +1,20 @@
 // app/api/folders/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { FileService } from '@/services/files/FileService';
+import { Database } from '@/types/types_db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient<Database>({ 
+      cookies: () => cookieStore 
+    });
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {

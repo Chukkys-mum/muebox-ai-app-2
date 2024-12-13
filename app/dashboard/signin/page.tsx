@@ -5,9 +5,10 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 export default async function SignIn() {
-  const cookieStore = await cookies();
-  const preferredSignInView = cookieStore.get('preferredSignInView')?.value || null;
+  const cookieStore = await cookies(); // Use 'await' to get cookies
+  const preferredSignInView = cookieStore.get('preferredSignInView')?.value || 'default';
   const defaultView = getDefaultSignInView(preferredSignInView);
-  
-  return redirect(`/dashboard/signin/${defaultView}`);
+
+  // Redirect to the appropriate sign-in view
+  redirect(`/dashboard/signin/${defaultView}`);
 }

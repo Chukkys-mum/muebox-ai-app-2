@@ -5,7 +5,7 @@
 @import "react-quill/dist/quill.snow.css";
 
 
-@import './custom.css';
+/* @import './custom.css'; */
 
 :root {
   --radius: 10px;
@@ -167,11 +167,23 @@ input:checked.defaultCheckbox::before {
   }
 }
 
+/* Public Layout */
+body {
+  background-color: #f9fafb;
+}
+
+/* Private Layout */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Ensure 'border-border' is a valid Tailwind class */
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground; /* Ensure these classes are defined */
   }
 }

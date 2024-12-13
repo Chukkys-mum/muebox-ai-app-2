@@ -75,7 +75,7 @@ export default async function SignIn({
         <AuthUI
           viewProp={viewProp}
           user={user}
-          allowPassword={allowPassword}
+          allowPassword={allowPassword} 
           allowEmail={allowEmail}
           redirectMethod={redirectMethod}
           disableButton={searchParamsValue.disable_button}

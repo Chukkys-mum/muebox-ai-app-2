@@ -5,52 +5,55 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 
-export const createServerSupabaseClient = cache(() =>
-  createServerComponentClient<Database>({ cookies })
-);
-
-export async function getUserDetails() {
-  const supabase = createServerSupabaseClient();
+// Create a cached Supabase client instance with correct cookie handling
+export const createServerSupabaseClient = cache(async () => {
   try {
-    const { data: userDetails } = await supabase
+    const cookieStore = await cookies(); // Await cookies() to resolve the promise
+    const sessionCookie = cookieStore.get('sb-127-auth-token'); // Use .get() after resolution
+    if (!sessionCookie) {
+      throw new Error('Supabase session cookie missing');
+    }
+    const session = JSON.parse(sessionCookie.value);
+    return createServerComponentClient<Database>({ cookies: () => session });
+  } catch (error) {
+    console.error('Error creating Supabase client:', error);
+    throw error;
+  }
+});
+
+// Fetch user details securely
+export async function getUserDetails() {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: userDetails, error } = await supabase
       .from('users')
       .select('*')
       .single();
+
+    if (error) {
+      console.error('Error fetching user details:', error);
+      return null;
+    }
     return userDetails;
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Critical error in getUserDetails:', error);
     return null;
   }
 }
 
-export async function getSubscription() {
-  const supabase = createServerSupabaseClient();
+// Securely fetch active session user
+export async function getSessionUser() {
   try {
-    const { data: subscription } = await supabase
-      .from('subscriptions')
-      .select('*, prices(*, products(*))')
-      .in('status', ['trialing', 'active'])
-      .maybeSingle()
-      .throwOnError();
-    return subscription;
+    const supabase = await createServerSupabaseClient();
+    const { data: user, error } = await supabase.auth.getUser();
+
+    if (error) {
+      console.error('Error fetching session user:', error);
+      return null;
+    }
+    return user;
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Critical error in getSessionUser:', error);
     return null;
   }
 }
-
-export const getActiveProductsWithPrices = async () => {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, prices(*)')
-    .eq('active', true)
-    .eq('prices.active', true)
-    .order('metadata->index')
-    .order('unit_amount', { foreignTable: 'prices' });
-
-  if (error) {
-    console.log(error.message);
-  }
-  return data ?? [];
-};
