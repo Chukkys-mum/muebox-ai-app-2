@@ -14,7 +14,30 @@ import { PostgrestSingleResponse } from '@supabase/supabase-js';
 import { logger } from '@/utils/logger';
 import { Database } from '@/types/types_db';
 
-type DatabaseFile = Database['public']['Tables']['files']['Row'];
+type DatabaseFileRow = Database['public']['Tables']['files']['Row'];
+
+interface BaseServiceFile {
+  id: string;
+  file_name: string;
+  size: number;
+  type: "file" | "folder";
+  status: string;
+  category: string | null;
+  extension: string | null;
+  mime_type: string | null;
+  parent_id: string | null;
+  uploaded_by: string;
+  file_type?: string | null;
+  file_path?: string | null;
+  related_entity_type?: string | null;
+  related_entity_id?: string | null;
+  metadata?: Record<string, any> | null;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+  archived_at?: string | null;
+}
+
 
 // Custom error class for FileService
 export class FileServiceError extends Error {
@@ -25,34 +48,32 @@ export class FileServiceError extends Error {
 }
 
 export class FileService extends BaseService {
-  protected transformDatabaseFile(file: DatabaseFile): FileRow {
+  protected transformDatabaseFile(file: BaseServiceFile): FileRow {
     return {
-      id: file.id,
-      file_name: file.file_name,
-      size: typeof file.size === 'string' ? parseInt(file.size) : (file.size || 0),
-      type: file.type || 'file',
+      ...file,
+      type: file.type,
       status: file.status as FileStatus,
       category: file.category as FileCategory || null,
       extension: file.extension || null,
       mime_type: file.mime_type || null,
       parent_id: file.parent_id || null,
-      uploaded_by: file.uploaded_by,
-      is_pinned: file.is_pinned || false,
-      starred: file.starred || false,
-      tags: file.tags || [],
-      description: file.description || '',
+      is_pinned: false, // Default values for extra properties
+      starred: false,
+      tags: [],
+      description: '',
       created_at: file.created_at || new Date().toISOString(),
       updated_at: file.updated_at || new Date().toISOString(),
       deleted_at: file.deleted_at || null,
       archived_at: file.archived_at || null,
-      is_shared: file.is_shared || false,
-      shared_with: file.shared_with || [],
-      permissions: file.permissions || null,
-      user_id: file.user_id || '',
-      metadata: file.metadata || null,
+      is_shared: false,
+      shared_with: [],
+      permissions: null,
+      user_id: '',
       related_entity_type: file.related_entity_type || null,
       related_entity_id: file.related_entity_id || null,
-      file_path: file.file_path || null
+      file_path: file.file_path || null,
+      metadata: file.metadata || null,
+      uploaded_by: file.uploaded_by
     };
   }
 
@@ -160,14 +181,14 @@ export class FileService extends BaseService {
   async getArchivedStorageUsage(): Promise<FileStorageUsage> {
     try {
       const supabase = await this.getClient();
-      const { data, error } = await supabase.rpc('get_archived_storage_usage') as PostgrestSingleResponse<{
+      const { data, error } = await supabase.rpc('get_archive_storage_usage') as PostgrestSingleResponse<{
         used_space: number;
         total_space: number;
         storage_breakdown: Record<string, number>;
       }>;
-  
+
       if (error) throw error;
-  
+
       return {
         used: data?.used_space || 0,
         total: data?.total_space || 0,
@@ -210,15 +231,19 @@ export class FileService extends BaseService {
 
   async updateFileSettings(settings: Partial<FileSettings>): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getClient();
+      if (!settings.id) {
+        throw new Error('Settings ID is required');
+      }
+
+      const { error } = await supabase
         .from("file_settings")
         .update({
           max_file_size: settings.maxFileSize,
           allowed_file_types: settings.allowedFileTypes,
-          // Don't update id or updated_at, they should be handled by the database
         })
         .eq("id", settings.id);
-  
+
       if (error) throw error;
       return true;
     } catch (err) {
@@ -243,20 +268,21 @@ export class FileService extends BaseService {
   }
 }
 
-  async deleteFile(fileId: string): Promise<FileOperationResult> {
-    return this.genericFileOperation(
-      async () => await this.supabase
-        .from("files")
-        .update({ 
-          status: 'deleted' as FileStatus,
-          deleted_at: new Date().toISOString()
-        })
-        .eq("id", fileId)
-        .select()
-        .single(),
-      'File deleted successfully'
-    );
-  }
+async deleteFile(fileId: string): Promise<FileOperationResult> {
+  const supabase = await this.getClient();
+  return this.genericFileOperation(
+    async () => await supabase
+      .from("files")
+      .update({ 
+        status: 'deleted' as FileStatus,
+        deleted_at: new Date().toISOString()
+      })
+      .eq("id", fileId)
+      .select()
+      .single(),
+    'File deleted successfully'
+  );
+}
 
   async uploadFile(file: Partial<FileRow>): Promise<FileOperationResult> {
     try {
@@ -307,10 +333,6 @@ export class FileService extends BaseService {
         error: err instanceof Error ? err.message : 'Failed to update file'
       };
     }
-
-  static async getFilesByFolder(folderId: string): Promise<FileRow[]> {
-    const service = new FileService();
-    return service.getFilesByFolder(folderId);
   }
 
   async getFilesByFolder(folderId: string): Promise<FileRow[]> {
@@ -321,53 +343,62 @@ export class FileService extends BaseService {
         .select("*")
         .eq("parent_id", folderId)
         .eq("status", "active");
-  
+
       if (error) throw error;
-      return data?.map(file => this.transformDatabaseFile(file)) || [];
+      
+      return data ? data.map(file => this.transformDatabaseFile(file)) : [];
     } catch (err) {
       console.error('getFilesByFolder:', err);
       return [];
     }
   }
-
-  async getFilesByCategory(category: FileCategory): Promise<FileRow[]> {
-    try {
-      const supabase = await this.getClient();
-      const { data, error } = await supabase
-        .from("files")
-        .select("*")
-        .eq("category", category)
-        .eq("status", "active");
   
-      if (error) throw error;
-      return data?.map(file => this.transformDatabaseFile(file)) || [];
-    } catch (err) {
-      console.error('getFilesByCategory:', err);
-      return [];
-    }
-  }  
-
-  static async getFilesAndFolders(): Promise<FileRow[]> {
+  // Static version of the method
+  static async getFilesByFolderStatic(folderId: string): Promise<FileRow[]> {
     const service = new FileService();
-    return await service.getFilesAndFolders();
+    return service.getFilesByFolder(folderId);
   }
 
-  async getFilesAndFolders(): Promise<FileRow[]> {
-    try {
-      const supabase = await this.getClient();
-      const { data, error } = await supabase
-        .from("files")
-        .select("*")
-        .is("parent_id", null)
-        .eq("status", "active");
-  
-      if (error) throw error;
-      return data?.map(file => this.transformDatabaseFile(file)) || [];
-    } catch (err) {
-      console.error('getFilesAndFolders:', err);
-      return [];
-    }
+
+
+async getFilesByCategory(category: FileCategory): Promise<FileRow[]> {
+  try {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("files")
+      .select("*")
+      .eq("category", category)
+      .eq("status", "active");
+
+    if (error) throw error;
+    return data?.map(file => this.transformDatabaseFile(file)) || [];
+  } catch (err) {
+    console.error('getFilesByCategory:', err);
+    return [];
   }
+}  
+
+static async getFilesAndFolders(): Promise<FileRow[]> {
+  const service = new FileService();
+  return await service.getFilesAndFolders();
+}
+
+async getFilesAndFolders(): Promise<FileRow[]> {
+  try {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("files")
+      .select("*")
+      .is("parent_id", null)
+      .eq("status", "active");
+
+    if (error) throw error;
+    return data?.map(file => this.transformDatabaseFile(file)) || [];
+  } catch (err) {
+    console.error('getFilesAndFolders:', err);
+    return [];
+  }
+}
 
   async moveFile(fileId: string, newParentId: string | null): Promise<FileOperationResult> {
     try {
@@ -402,18 +433,22 @@ export class FileService extends BaseService {
   ): Promise<FileOperationResult> {
     try {
       const supabase = await this.getClient();
+      const updateData = {
+        metadata: {
+          is_shared: isShared,
+          shared_with: sharedWith || []
+        }
+      };
+
       const { data, error } = await supabase
         .from("files")
-        .update({ 
-          is_shared: isShared,
-          shared_with: sharedWith
-        })
+        .update(updateData)
         .eq("id", fileId)
         .select()
         .single();
-  
+
       if (error) throw error;
-  
+
       return {
         success: true,
         message: 'Sharing settings updated successfully',
@@ -427,6 +462,7 @@ export class FileService extends BaseService {
       };
     }
   }
+
   
   async getStorageUsage(): Promise<FileStorageUsage> {
     try {
@@ -641,73 +677,71 @@ async saveToDraft(fileId: string): Promise<FileOperationResult> {
   }
 }
 
-  async getFileContent(fileId: string): Promise<string | null> {
-    try {
-      const { data: file, error: fetchError } = await this.supabase
-        .from("files")
-        .select("file_path")
-        .eq("id", fileId)
-        .single();
+async getFileContent(fileId: string): Promise<string | null> {
+  try {
+    const supabase = await this.getClient();
+    const { data: file, error: fetchError } = await supabase
+      .from("files")
+      .select("file_path")
+      .eq("id", fileId)
+      .single();
 
-      if (fetchError) throw fetchError;
-      if (!file?.file_path) return null;
+    if (fetchError) throw fetchError;
+    if (!file?.file_path) return null;
 
-      const { data, error: downloadError } = await this.supabase
-        .storage
-        .from('files')
-        .download(file.file_path);
+    const { data, error: downloadError } = await supabase
+      .storage
+      .from('files')
+      .download(file.file_path);
 
-      if (downloadError) throw downloadError;
+    if (downloadError) throw downloadError;
 
-      return await data.text();
-    } catch (err) {
-      console.error('getFileContent:', err);
-      return null;
-    }
+    return await data.text();
+  } catch (err) {
+    console.error('getFileContent:', err);
+    return null;
   }
+}
 
-  async saveFileContent(fileId: string, content: string): Promise<FileOperationResult> {
-    try {
-      const { data: file, error: fetchError } = await this.supabase
-        .from("files")
-        .select("file_path, mime_type")
-        .eq("id", fileId)
-        .single();
+async saveFileContent(fileId: string, content: string): Promise<FileOperationResult> {
+  try {
+    const supabase = await this.getClient();
+    const { data: file, error: fetchError } = await supabase
+      .from("files")
+      .select("file_path, mime_type")
+      .eq("id", fileId)
+      .single();
 
-      if (fetchError) throw fetchError;
-      if (!file?.file_path) throw new Error('File path not found');
+    if (fetchError) throw fetchError;
+    if (!file?.file_path) throw new Error('File path not found');
 
-      // Upload the new content
-      const { error: uploadError } = await this.supabase
-        .storage
-        .from('files')
-        .update(
-          file.file_path,
-          new Blob([content], { type: file.mime_type || 'text/plain' }),
-          {
-            cacheControl: '3600',
-            upsert: true
-          }
-        );
-
-      if (uploadError) throw uploadError;
-
-      // Update the file record
-      return await this.updateFile(fileId, {
-        metadata: {
-          last_modified: new Date().toISOString()
+    const { error: uploadError } = await supabase
+      .storage
+      .from('files')
+      .update(
+        file.file_path,
+        new Blob([content], { type: file.mime_type || 'text/plain' }),
+        {
+          cacheControl: '3600',
+          upsert: true
         }
-      });
-    } catch (err) {
-      console.error('saveFileContent:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Failed to save file content'
-      };
-    }
-  }
+      );
 
-  // In FileService:
+    if (uploadError) throw uploadError;
+
+    return await this.updateFile(fileId, {
+      metadata: {
+        last_modified: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    console.error('saveFileContent:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to save file content'
+    };
+  }
+}
 
 async shareFile(fileId: string): Promise<FileOperationResult> {
   return this.shareEntity(fileId, 'file');

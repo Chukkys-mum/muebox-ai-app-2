@@ -5,19 +5,19 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 
 export default async function Dashboard() {
-  const supabase = await createClient(); // Use 'await' here
-
+  const supabase = await createClient();
+  
   try {
-    const user = await getUser(supabase); // Fetch user data
-
+    const { data: { user } } = await supabase.auth.getUser();
+    
     if (!user) {
-      redirect('/dashboard/signin'); // Redirect unauthenticated users
+      redirect('/dashboard/signin');
     } else {
-      redirect('/dashboard/main'); // Redirect authenticated users
+      redirect('/dashboard/main');
     }
   } catch (error) {
     console.error('Error in Dashboard:', error);
-    redirect('/dashboard/signin'); // Fallback redirect on error
+    redirect('/dashboard/signin');
   }
 }
 

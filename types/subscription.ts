@@ -2,23 +2,22 @@
 
 import { WithTimestamps, WithStatus, JsonB, DbTimestamptz } from './common';
 import type { Stripe } from 'stripe';
+import { Json } from './types_db';  
 
 export type AccountType = 'personal' | 'company';
 export type PricingPlanInterval = 'day' | 'week' | 'month' | 'year';
 export type PricingType = 'one_time' | 'recurring';
-export type SubscriptionStatus = 
-  | 'trialing' 
-  | 'active' 
-  | 'canceled' 
-  | 'incomplete' 
-  | 'incomplete_expired' 
-  | 'past_due' 
-  | 'unpaid' 
+export type SubscriptionStatus =
+  | 'trialing'
+  | 'active'
+  | 'canceled'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'past_due'
+  | 'unpaid'
   | 'paused';
+export type AccountStatus = 'trial' | 'subscriber' | 'regular';
 
-  export type AccountStatus = 'trial' | 'subscriber' | 'regular';  
-
-// Generic Stripe types that we need
 export interface StripeAddress {
   city?: string | null;
   country?: string | null;
@@ -102,63 +101,61 @@ export interface Account {
   updated_at: string;
 }
 
-// Product interface
+// Base Product interface aligned with database types
 export interface Product {
-  id: string; /* primary key */
-  active?: boolean;
-  name?: string;
-  description?: string;
-  image?: string;
-  metadata?: StripeMetadata;
+  id: string;
+  active: boolean | null;
+  name: string | null;
+  description: string | null;
+  image: string | null;
+  metadata: Json | null;
 }
 
-// Price interface
+// Base Price interface aligned with database types
 export interface Price {
-  id: string; /* primary key */
-  product_id?: string; /* foreign key to products.id */
-  active?: boolean;
-  description?: string;
-  unit_amount?: number;
-  currency?: Currency;
-  type?: PricingType;
-  interval?: PricingPlanInterval;
-  interval_count?: number;
-  trial_period_days?: number | null;
-  metadata?: StripeMetadata;
-  products?: Product;
-}
-
-// Currency type
-export type Currency = string & { length: 3 };
-
-// Product with Price interface
-export interface ProductWithPrice extends Product {
-  prices?: Price[];
+  id: string;
+  product_id: string | null;
+  active: boolean | null;
+  description: string | null;
+  unit_amount: number | null;
+  currency: string | null;
+  type: PricingType | null;
+  interval: PricingPlanInterval | null;
+  interval_count: number | null;
+  trial_period_days: number | null;
+  metadata: Json | null;
+  account_id: string;
 }
 
 // Price with Product interface
 export interface PriceWithProduct extends Price {
-  products?: Product;
+  products: Product;
 }
 
-// Subscription interface
+// Product with Price interface
+export interface ProductWithPrice extends Product {
+  prices?: PriceWithProduct[];
+}
+
+// Base Subscription interface
 export interface Subscription {
   id: string;
   account_id: string;
-  status?: SubscriptionStatus;
-  metadata?: JsonB;
-  price_id?: string;
-  quantity?: number;
-  cancel_at_period_end?: boolean;
-  created: DbTimestamptz;
-  current_period_start: DbTimestamptz;
-  current_period_end: DbTimestamptz;
-  ended_at?: DbTimestamptz;
-  cancel_at?: DbTimestamptz;
-  canceled_at?: DbTimestamptz;
-  trial_start?: DbTimestamptz;
-  trial_end?: DbTimestamptz;
-  prices?: Price | null; // Change this to allow null
+  status: SubscriptionStatus | null;
+  metadata: Json | null;
+  price_id: string | null;
+  quantity: number | null;
+  cancel_at_period_end: boolean | null;
+  created: string;
+  current_period_start: string;
+  current_period_end: string;
+  ended_at: string | null;
+  cancel_at: string | null;
+  canceled_at: string | null;
+  trial_start: string | null;
+  trial_end: string | null;
+  credits: number | null;
+  trial_credits?: number | null;
 }
 
 // Subscription with Price and Product
@@ -166,4 +163,4 @@ export interface SubscriptionWithProduct extends Subscription {
   prices: PriceWithProduct | null;
 }
 
-// You can add more subscription-related types or interfaces here as needed
+export type Currency = string & { length: 3 };

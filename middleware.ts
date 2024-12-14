@@ -1,14 +1,16 @@
+// middleware.ts
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Define your public routes
+// Define your public routes - include all possible auth-related paths
 const publicRoutes = [
-  '/EmailSignIn',
-  '/Signup',
-  '/ForgotPassword',
-  '/UpdatePassword',
-  '/PasswordSignin',
-  '/OauthSignIn',
+  '/dashboard/signin',
+  '/dashboard/signin/password_signin',
+  '/dashboard/signin/email_signin',
+  '/dashboard/signup',
+  '/dashboard/forgot-password',
+  '/dashboard/reset-password',
 ];
 
 export const createClient = (request: NextRequest) => {
@@ -55,44 +57,39 @@ export const createClient = (request: NextRequest) => {
   return { supabase, response };
 };
 
-// Middleware function
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createClient(request);
+  const pathname = request.nextUrl.pathname;
 
   try {
-    const pathname = request.nextUrl.pathname;
-
-    // Allow public routes to proceed without authentication
-    if (publicRoutes.includes(pathname)) {
+    // Check if it's a public route
+    if (publicRoutes.some(route => pathname.startsWith(route))) {
       return response;
     }
 
-    // Check if the user is authenticated
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error || !data.session) {
-      // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL('/EmailSignIn', request.url));
+    // For dashboard routes, check authentication
+    if (pathname.startsWith('/dashboard')) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        // Redirect to login if not authenticated
+        return NextResponse.redirect(new URL('/dashboard/signin', request.url));
+      }
     }
 
-    // Allow private routes to proceed if authenticated
+    // Allow all other routes to proceed
     return response;
   } catch (error) {
     console.error('Middleware processing error:', error);
-    return NextResponse.next();
+    // Redirect to login on error
+    return NextResponse.redirect(new URL('/dashboard/signin', request.url));
   }
 }
 
-
-// Middleware matcher configuration
+// Update the matcher to catch all relevant paths
 export const config = {
   matcher: [
-    '/dashboard/:path*', // Private routes
-    '/EmailSignIn', // Explicitly add other public routes to prevent middleware mismatch
-    '/Signup',
-    '/ForgotPassword',
-    '/UpdatePassword',
-    '/PasswordSignin',
-    '/OauthSignIn',
+    '/dashboard/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|api|img).*)',
   ],
 };

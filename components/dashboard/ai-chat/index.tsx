@@ -34,6 +34,8 @@ import {
   ChatUser 
 } from '@/types/chat';
 import ChatInput from '@/components/dashboard/ai-chat/ChatInput';
+import { FormEvent, KeyboardEvent, SetStateAction } from 'react';
+import { Message } from 'ai';
 
 type ProductWithPrices = Database['public']['Tables']['products']['Row'] & { prices: Database['public']['Tables']['prices']['Row'][] };
 type SubscriptionWithProduct = Database['public']['Tables']['subscriptions']['Row'] & { prices: Database['public']['Tables']['prices']['Row'] & { products: Database['public']['Tables']['products']['Row'] | null } | null };
@@ -81,6 +83,7 @@ export default function Chat() {
   const [chatList, setChatList] = useState<ChatType[]>([]);
   const [chatMessagesMap, setChatMessagesMap] = useState<Record<string, ChatMessage[]>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
+
 
   const newChat: ChatType = {
     id: uuidv4(),
@@ -181,25 +184,33 @@ export default function Chat() {
   }, []);
 
   const handleChatScopeChange = (newScope: Partial<ChatScope>) => {
-    setChatScopeState(prev => ({
+    setChatScopeState((prev: ChatScope) => ({
       ...prev,
       ...newScope,
       context: typeof newScope.context === 'string' ? newScope.context : JSON.stringify(newScope.context),
     }));
   };
 
-  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendMessage = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await handleSubmit(e);
     setInput('');
     inputRef.current?.focus();
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage(e as any);
+      handleSendMessage(e as unknown as FormEvent<HTMLFormElement>);
     }
+  };
+
+  const onChatSelect = (chatId: string) => {
+    console.log('Selected chat:', chatId);
+  };
+
+  const onNewChat = () => {
+    setChatList((prev: ChatType[]) => [...prev, newChat]);
   };
 
   useEffect(() => {
@@ -240,43 +251,39 @@ export default function Chat() {
       {/* Chat Sidebar - Fixed width, full height */}
       <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
         <ChatSidebar
-          chats={chatList || []} // Fallback to an empty array
-          chatScopes={
-            Object.fromEntries(
-              (chatScopes || []).map((scope) => [
-                scope.value,
-                {
-                  id: scope.value,
-                  name: scope.label,
-                  status: 'active',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                } as ChatScope
-              ])
-            )
-          }
-          messages={
-            Object.fromEntries(
-              (chatList || []).map((chat) => [
-                chat.id,
-                messages.map((msg) => ({
-                  id: msg.id,
-                  chat_id: chat.id,
-                  sender_id: msg.role === 'user' ? 'user' : 'assistant',
-                  content: msg.content,
-                  type: 'text',
-                  is_read: true,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                } as ChatMessage))
-              ])
-            )
-          }
+          chats={chatList}
+          chatScopes={Object.fromEntries(
+            chatScopes.map(scope => [
+              scope.value,
+              {
+                id: scope.value,
+                name: scope.label,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              } as ChatScope
+            ])
+          )}
+          messages={Object.fromEntries(
+            chatList.map(chat => [
+              chat.id,
+              messages.map((msg: Message) => ({
+                id: msg.id,
+                chat_id: chat.id,
+                sender_id: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+                type: 'text',
+                is_read: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              } as ChatMessage))
+            ])
+          )}
           onSelectChat={(chatId) => {
             console.log('Selected chat:', chatId);
           }}
           onNewChat={() => {
-            setChatList((prev) => [...prev, newChat]);
+            setChatList(prev => [...prev, newChat]);
           }}
         />
       </div>
@@ -287,12 +294,12 @@ export default function Chat() {
         <div className="flex-shrink-0 h-16 border-b border-gray-200 dark:border-gray-700 p-4">
           <h2 className="text-lg font-semibold">Current Chat</h2>
         </div>
-  
+
         {/* Messages Container - Scrollable */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-2xl mx-auto space-y-4 flex flex-col-reverse">
-            {/* Reverse the messages array to show newest at the bottom */}
-            {(messages || []).slice().reverse().map((message) => (
+            {/* Reverse the messages array to show newest at bottom */}
+            {messages.slice().reverse().map((message: Message) => (
               <div
                 key={message.id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -336,7 +343,7 @@ export default function Chat() {
             ))}
           </div>
         </div>
-  
+
         {/* Input Area - Fixed at bottom */}
         <div className="flex-shrink-0 border-t bg-white dark:bg-zinc-800 p-2">
           <div className="max-w-2xl mx-auto">
@@ -344,31 +351,47 @@ export default function Chat() {
               <div className="relative w-full">
                 <Input
                   ref={inputRef}
-                  className="pr-16 w-full h-8 text-xs"
+                  className="pr-16 w-full h-8 text-xs" 
                   placeholder="How can Zach help you?"
                   value={input}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                 />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex space-x-0.5">
-                  <Button
-                    type="button"
-                    onClick={startListening}
-                    disabled={isListening}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <HiMicrophone className="h-3 w-3" />
+                  <Button type="button" onClick={startListening} disabled={isListening} size="icon" variant="ghost">
+                    <HiMicrophone className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                   <Button type="submit" disabled={isLoading} size="icon" variant="ghost">
-                    <HiPaperAirplane className="h-3 w-3" />
+                    <HiPaperAirplane className="h-3 w-3" /> {/* Smaller icon */}
                   </Button>
                 </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-0.5">
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiPaperClip className="h-3 w-3" /> {/* Smaller icon */}
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiFaceSmile className="h-3 w-3" /> {/* Smaller icon */}
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiCodeBracket className="h-3 w-3" /> {/* Smaller icon */}
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost">
+                    <HiMiniPencilSquare className="h-3 w-3" /> {/* Smaller icon */}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex justify-center">
+                <p className="text-[8px] text-zinc-500 dark:text-zinc-400 mt-1 text-center">
+                  AI may produce inaccurate information {/* Reduced font size */}
+                </p>
               </div>
             </form>
           </div>
         </div>
-  
+
+
         {/* ChatScopePanel */}
         <div className="fixed right-0 top-[100px] z-50">
           <Button
@@ -376,24 +399,24 @@ export default function Chat() {
             className={`h-32 w-8 rounded-l-md bg-[#F8F8F8] text-black hover:bg-[#F0F0F0] transition-all duration-300 ${
               isChatScopePanelOpen ? 'translate-x-[400px]' : ''
             }`}
-            style={{
+            style={{ 
               writingMode: 'vertical-rl',
-              textOrientation: 'mixed',
+              textOrientation: 'mixed'
             }}
           >
             Chat Scope
           </Button>
         </div>
-  
-        {/* Conditional ChatScopePanel */}
+
+        {/* Ensure JSX block is closed properly */}
         {isChatScopePanelOpen && (
-          <ChatScopePanel
-            isOpen={isChatScopePanelOpen}
+          <ChatScopePanel 
+            isOpen={isChatScopePanelOpen} 
             onClose={() => setIsChatScopePanelOpen(false)}
             chatScope={chatScopeState}
             onChatScopeChange={handleChatScopeChange}
-            availableKnowledgeBases={availableKnowledgeBases || []}
-            availableFolders={availableFolders || []}
+            availableKnowledgeBases={availableKnowledgeBases}
+            availableFolders={availableFolders}
           />
         )}
       </div>

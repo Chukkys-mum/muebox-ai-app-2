@@ -1,6 +1,15 @@
 // utils/logger.ts
 // Utility functions for logging messages to the console and external services
+
+// utils/logger.ts
 type LogLevel = 'info' | 'warn' | 'error';
+
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+};
 
 export const logger = {
   log: (level: LogLevel, message: string, meta?: any) => {
@@ -18,8 +27,8 @@ export const logger = {
         break;
     }
 
-    // Log to an external service
-    if (level === 'error') {
+    // Log to external service only in production
+    if (level === 'error' && process.env.NODE_ENV === 'production') {
       logError({ error: new Error(message), errorInfo: meta });
     }
   },
@@ -28,17 +37,22 @@ export const logger = {
   error: (message: string, meta?: any) => logger.log('error', message, meta),
 };
 
-// Function to log errors to an external service
 export const logError = async ({ error, errorInfo }: { error: Error; errorInfo: any }) => {
   try {
-    const response = await fetch('/api/logError', {
+    const baseUrl = getBaseUrl();
+    
+    const response = await fetch(`${baseUrl}/api/logError`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo?.componentStack || null,
-        meta: errorInfo,
+        error: {
+          message: error.message,
+          stack: error.stack,
+        },
+        errorInfo: {
+          componentStack: errorInfo?.componentStack || null,
+          meta: errorInfo,
+        },
       }),
     });
 
